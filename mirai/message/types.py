@@ -1,10 +1,10 @@
 import typing as T
 from enum import Enum
-from .chain import MessageChain
-from . import MessageComponentTypes
+from .base import MessageComponentTypes
 from mirai.friend import Friend
 from mirai.group import Group, Member
 from pydantic import BaseModel
+from .chain import MessageChain
 
 class MessageItemType(Enum):
     FriendMessage = "FriendMessage"

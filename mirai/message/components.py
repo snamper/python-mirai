@@ -3,8 +3,7 @@ import typing as T
 from uuid import UUID
 from mirai.misc import findKey
 from mirai.face import QQFaces
-from . import BaseMessageComponent
-from . import MessageComponentTypes
+from mirai.message.base import BaseMessageComponent, MessageComponentTypes
 from pydantic import Field
 
 __all__ = [
@@ -37,13 +36,13 @@ class At(BaseMessageComponent):
     display: T.Optional[str]
 
     def toString(self):
-        return f"[At::target={self.target}]"
+        return f"[At::target={self.target},group={message.get().message.sender.group.id},sender={message.get().message.sender.id}]"
 
 class AtAll(BaseMessageComponent):
     type: MessageComponentTypes = "AtAll"
 
     def toString(self):
-        return "@全体成员"
+        return f"[AtAll::group={message.get().message.sender.group.id},sender={message.get().message.sender.id}]"
 
 class Face(BaseMessageComponent):
     type: MessageComponentTypes = "Face"
@@ -65,3 +64,24 @@ class Unknown(BaseMessageComponent):
 
     def toString(self):
         return ""
+
+class ComponentTypes(Enum):
+    Plain = Plain
+    Source = Source
+    At = At
+    AtAll = AtAll
+    Face = Face
+    Image = Image
+    Unknown = Unknown
+
+MessageComponents = {
+    "At": At,
+    "AtAll": AtAll,
+    "Face": Face,
+    "Plain": Plain,
+    "Image": Image,
+    "Source": Source,
+    "Unknown": Unknown
+}
+
+from ..context import message, event

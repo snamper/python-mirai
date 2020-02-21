@@ -1,37 +1,18 @@
-from .session import Session
-from .protocol import MiraiProtocol
-from .group import Group, Member
-from .friend import Friend
-from .message import (
-    At,
-    AtAll,
-    Face,
-    Image,
-    Plain,
-    Source
-)
-from .message.chain import MessageChain
-from .message.types import FriendMessage, GroupMessage
-from .image import Image
+import mirai.misc
+import mirai.face
 
-__all__ = [
-    "Session",
-    "MiraiProtocol",
+import mirai.message.base
+import mirai.message.components
+import mirai.message.chain
+import mirai.message.types
 
-    "Group",
-    "Member",
-    "Friend",
-    "Image",
+import mirai.event
+import mirai.event.external
 
-    "At",
-    "AtAll",
-    "Face",
-    "Image",
-    "Plain",
-    "Source",
+import mirai.friend
+import mirai.group
+import mirai.image
 
-    "MessageChain",
-
-    "FriendMessage",
-    "GroupMessage"
-]
+import mirai.network
+import mirai.protocol
+import mirai.session

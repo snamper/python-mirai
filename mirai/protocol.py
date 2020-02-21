@@ -5,19 +5,18 @@ from pathlib import Path
 from uuid import UUID
 import json
 
-from mirai import message
 from mirai.message.types import FriendMessage, GroupMessage, MessageTypes
 
-from .event import ExternalEvent, ExternalEvents
-from .friend import Friend
-from .group import Group, GroupSetting, Member, MemberChangeableSetting
-from .image import Image
-from .message import BaseMessageComponent, MessageComponents
-from .message.chain import MessageChain
-from .misc import ImageRegex, ImageType, assertOperatorSuccess, raiser
-from .network import fetch
-from .misc import printer
-
+from mirai.event import ExternalEvent, ExternalEvents
+from mirai.friend import Friend
+from mirai.group import Group, GroupSetting, Member, MemberChangeableSetting
+from mirai.image import Image
+from mirai.message.chain import MessageChain
+from mirai.misc import ImageRegex, ImageType, assertOperatorSuccess, raiser, printer
+from mirai.network import fetch
+from mirai.message.base import BaseMessageComponent
+#from .context import MessageContext
+import threading
 
 class MiraiProtocol:
     qq: int
@@ -142,7 +141,7 @@ class MiraiProtocol:
         for index in range(len(result)):
             if result[index]['type'] in MessageTypes:
                 if 'messageChain' in result[index]:
-                    result[index]['messageChain'] = MessageChain.parse_obj(result[index]['messageChain'])
+                    result[index]['messageChain'] = MessageChain.custom_parse(result[index]['messageChain'])
                 result[index] = \
                     MessageTypes[result[index]['type']].parse_obj(result[index])
             elif hasattr(ExternalEvents, result[index]['type']):
@@ -295,3 +294,5 @@ class MiraiProtocol:
                 } if kickMessage else {})
             }
         ), raise_exception=True)
+
+from mirai.message.components import MessageComponents

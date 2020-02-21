@@ -1,19 +1,29 @@
 import typing as T
-
 from pydantic import BaseModel
 
-from . import BaseMessageComponent
-from .components import At, AtAll, Face, Image, Plain, Source, Unknown
+from .base import BaseMessageComponent
+from ..misc import raiser, printer
 
 class MessageChain(BaseModel):
-    __root__: T.List[T.Union[
-        At, AtAll, Face, Image, Plain, Source, Unknown
-    ]] = []
+    __root__: T.List[T.Any] = []
 
     def __add__(self, value):
         if isinstance(value, BaseMessageComponent):
             self.__root__.append(value)
             return self
-        elif isinstance(value, self.__class__):
+        elif isinstance(value, MessageChain):
             self.__root__ += value.__root__
             return self
+
+    def toString(self):
+        return "".join([i.toString() for i in self.__root__])
+
+    @classmethod
+    def custom_parse(cls, value: T.List[T.Any]):
+        from .components import ComponentTypes
+        return cls(__root__=[
+            [   
+                lambda m: ComponentTypes.__members__[m['type']].value(**m),
+                lambda m: raiser(TypeError("invaild value"))
+            ][not isinstance(message, dict)](message) for message in value
+        ])

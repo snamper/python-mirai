@@ -7,8 +7,11 @@
 
 ``` python
 import asyncio
-from mirai import (At, FriendMessage, GroupMessage, MessageChain,
-                   MiraiProtocol, Plain, Session)
+from mirai.message.components import At, Plain
+from mirai.message.types import FriendMessage, GroupMessage
+from mirai.message.chain import MessageChain
+from mirai.protocol import MiraiProtocol
+from mirai.session import Session
 from typing import Union
 
 async def main():
@@ -22,10 +25,10 @@ async def main():
         @session.receiver("GroupMessage", lambda m: m.sender.group.id == 234532452345) # 已经实现一些上下文应用
         async def event_handler(
                 message: Union[FriendMessage, GroupMessage],
-                session_: Session, protocol: MiraiProtocol):
+                session_: Session):
             if isinstance(message, GroupMessage):
                 await protocol.sendGroupMessage(
-                    message.sender.group, 
+                    message.sender.group,
                     [PlainMessage(text="meow."), AtMessage(target=message.sender.id)]
                 )
 

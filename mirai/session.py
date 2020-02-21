@@ -8,8 +8,7 @@ from .message.types import FriendMessage, GroupMessage, MessageTypes, MessageIte
 from .event import InternalEvent, ExternalEvent, ExternalEventTypes, ExternalEvents
 import asyncio
 from threading import Thread, Lock
-import concurrent.futures
-
+from contextvars import ContextVar
 import random
 
 class Session(MiraiProtocol):
@@ -173,6 +172,7 @@ class Session(MiraiProtocol):
       # 事件系统实际上就是"lambda", 指定事件名称(like. GroupMessage), 然后lambda判断.
       # @event.receiver("GroupMessage", lambda info: info.......)
       for message_index in range(len(result)):
+        #print(result[message_index])
         await queue.put(
           InternalEvent(
             name=result[message_index].type.value\
@@ -201,10 +201,14 @@ class Session(MiraiProtocol):
     return receiver_warpper
 
   async def event_runner(self, exit_signal_status, queue: asyncio.Queue):
+    from .context import (
+      MessageContextBody, EventContextBody, # body
+      message as MessageContext, event as EventContext # context_object
+    )
     while not exit_signal_status():
       event_context: InternalEvent
       try:
-        event_context: InternalEvent = await asyncio.wait_for(queue.get(), 2)
+        event_context: InternalEvent = await asyncio.wait_for(queue.get(), 3)
       except asyncio.exceptions.TimeoutError:
         if exit_signal_status():
           break
@@ -214,11 +218,25 @@ class Session(MiraiProtocol):
         for event in self.event[event_context.name]:
           if event: # 判断是否有注册.
             for pre_condition, run_body in event.items():
-              if not pre_condition:
-                await run_body(event_context.body, self, super())
-                continue
-              if pre_condition(event_context.body):
-                await run_body(event_context.body, self, super())
+              if (not pre_condition) or (pre_condition(event_context.body)):
+                context_body: T.Union[MessageContextBody, EventContextBody]
+                internal_context_object: \
+                  T.Union[MessageContext, EventContext]
+                if hasattr(ExternalEvents, event_context.name):
+                  internal_context_object = EventContext
+                  context_body = EventContextBody(
+                    event=event_context.body,
+                    session=self
+                  )
+                else:
+                  internal_context_object = MessageContext
+                  context_body = MessageContextBody(
+                    message=event_context.body,
+                    session=self
+                  )
+                internal_context_object.set(context_body) # 设置完毕.
+
+                await run_body(context_body)
 
   async def close_session(self, ignoreError=False):
     if self.enabled:
