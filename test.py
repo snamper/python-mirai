@@ -1,11 +1,9 @@
 import asyncio
-from mirai import Session, MiraiProtocol
-from mirai import MessageChain, Plain, FriendMessage, GroupMessage, At
-from mirai.message.components import Unknown
-from mirai.misc import printer
-from pathlib import Path
-from pprint import pprint
 from typing import Union
+
+from mirai import (At, FriendMessage, GroupMessage, MessageChain,
+                   MiraiProtocol, Plain, Session)
+
 
 async def main():
     authKey = "213we355gdfbaerg"

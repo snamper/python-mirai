@@ -7,8 +7,8 @@
 
 ``` python
 import asyncio
-from mirai import Session, MiraiProtocol
-from mirai import MessageChain, PlainMessage, FriendMessage, GroupMessage, AtMessage
+from mirai import (At, FriendMessage, GroupMessage, MessageChain,
+                   MiraiProtocol, Plain, Session)
 from typing import Union
 
 async def main():
@@ -19,14 +19,14 @@ async def main():
         print(session.enabled) # 判断 session 是否已经可用
 
         @session.receiver("FriendMessage")
-        @session.receiver("GroupMessage", lambda m: m.sender.group == 234532452345) # 已经实现一些上下文应用
+        @session.receiver("GroupMessage", lambda m: m.sender.group.id == 234532452345) # 已经实现一些上下文应用
         async def event_handler(
                 message: Union[FriendMessage, GroupMessage],
                 session_: Session, protocol: MiraiProtocol):
             if isinstance(message, GroupMessage):
                 await protocol.sendGroupMessage(
                     message.sender.group, 
-                    PlainMessage(text="meow.") + AtMessage(target=message.sender.id)
+                    [PlainMessage(text="meow."), AtMessage(target=message.sender.id)]
                 )
 
         while True: # Session 不会帮你堵塞主线程, 自行实现一个吧.
