@@ -33,7 +33,7 @@ async def main():
             try:
                 await asyncio.sleep(1)
             except KeyboardInterrupt:
-                session.close_session()
+                break
 
 asyncio.run(main())
 ```
