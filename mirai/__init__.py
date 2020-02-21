@@ -3,15 +3,15 @@ from .protocol import MiraiProtocol
 from .group import Group, Member
 from .friend import Friend
 from .message import (
-    AtMessage,
-    AtAllMessage,
-    FaceMessage,
-    ImageMessage,
-    PlainMessage,
-    SourceMessage
+    At,
+    AtAll,
+    Face,
+    Image,
+    Plain,
+    Source
 )
 from .message.chain import MessageChain
-from .message.item import FriendMessage, GroupMessage
+from .message.types import FriendMessage, GroupMessage
 from .image import Image
 
 __all__ = [
@@ -23,12 +23,12 @@ __all__ = [
     "Friend",
     "Image",
 
-    "AtMessage",
-    "AtAllMessage",
-    "FaceMessage",
-    "ImageMessage",
-    "PlainMessage",
-    "SourceMessage",
+    "At",
+    "AtAll",
+    "Face",
+    "Image",
+    "Plain",
+    "Source",
 
     "MessageChain",
 

@@ -3,17 +3,20 @@ import typing as T
 from datetime import timedelta
 from pathlib import Path
 from uuid import UUID
+import json
 
 from mirai import message
-from mirai.message.item import FriendMessage, GroupMessage, ItemTypes
+from mirai.message.types import FriendMessage, GroupMessage, MessageTypes
 
+from .event import ExternalEvent, ExternalEvents
 from .friend import Friend
 from .group import Group, GroupSetting, Member, MemberChangeableSetting
 from .image import Image
-from .message import BaseMessage
+from .message import BaseMessageComponent, MessageComponents
 from .message.chain import MessageChain
 from .misc import ImageRegex, ImageType, assertOperatorSuccess, raiser
 from .network import fetch
+from .misc import printer
 
 
 class MiraiProtocol:
@@ -27,7 +30,7 @@ class MiraiProtocol:
             await fetch.http_post(f"{self.baseurl}/auth", {
                 "authKey": self.auth_key
             }
-        ), raise_exception=True)
+        ), raise_exception=True, return_as_is=True)
 
     async def verify(self):
         return assertOperatorSuccess(
@@ -35,7 +38,7 @@ class MiraiProtocol:
                 "sessionKey": self.session_key,
                 "qq": self.qq
             }
-        ), raise_exception=True)
+        ), raise_exception=True, return_as_is=True)
 
     async def release(self):
         return assertOperatorSuccess(
@@ -47,15 +50,23 @@ class MiraiProtocol:
 
     async def sendFriendMessage(self,
             target: T.Union[Friend, int],
-            message: T.Union[MessageChain, BaseMessage, T.List[BaseMessage]]
+            message: T.Union[
+                MessageChain,
+                BaseMessageComponent,
+                T.List[BaseMessageComponent]
+            ]
     ):
         return assertOperatorSuccess(
             await fetch.http_post(f"{self.baseurl}/sendFriendMessage", {
                 "sessionKey": self.session_key,
                 "target": target,
-                "messageChain": message.render() if isinstance(message, MessageChain) else \
-                    [message.render()] if isinstance(message, BaseMessage) else \
-                        [i.render() for i in message]
+                "messageChain": json.loads(message.json() \
+                    if isinstance(message, MessageChain) else \
+                        [json.loads(message.json())]) \
+                    if isinstance(message, BaseMessageComponent) else \
+                        [json.loads(i.json()) for i in message]
+                    if isinstance(message, (tuple, list)) else \
+                        raiser(ValueError("invaild message(s)."))
             }
         ), raise_exception=True)
     
@@ -66,28 +77,32 @@ class MiraiProtocol:
                 "target": target if isinstance(target, int) else \
                     target.id if isinstance(target, Group) else \
                         raiser(ValueError("invaild target as group.")),
-                "messageChain": message.render() \
+                "messageChain": json.loads(message.json() \
                     if isinstance(message, MessageChain) else \
-                        [message.render()]
+                        [json.loads(message.json())]) \
+                    if isinstance(message, BaseMessageComponent) else \
+                        [json.loads(i.json()) for i in message]
+                    if isinstance(message, (tuple, list)) else \
+                        raiser(ValueError("invaild message(s)."))
             }
         ), raise_exception=True)
 
     async def groupList(self) -> T.List[Group]:
-        return [Group.parser(group_info) \
+        return [Group.parse_obj(group_info) \
             for group_info in await fetch.http_get(f"{self.baseurl}/groupList", {
                 "sessionKey": self.session_key
             })
         ]
 
     async def friendList(self) -> T.List[Friend]:
-        return [Friend.parser(friend_info) \
+        return [Friend.parse_obj(friend_info) \
             for friend_info in await fetch.http_get(f"{self.baseurl}/friendList", {
                 "sessionKey": self.session_key
             })
         ]
 
     async def memberList(self, target: int) -> T.List[Member]:
-        return [Member.parser(member_info) \
+        return [Member.parse_obj(member_info) \
             for member_info in await fetch.http_get(f"{self.baseurl}/memberList", {
                 "sessionKey": self.session_key,
                 "target": target
@@ -112,9 +127,12 @@ class MiraiProtocol:
             }
         ))
 
-        return Image(UUID(uuid_string.string[slice(*uuid_string.span())]), imagePath.suffix[1:])
+        return Image(
+            id=UUID(uuid_string.string[slice(*uuid_string.span())]),
+            suffix=imagePath.suffix[1:]
+        )
 
-    async def fetchMessage(self, count: int) -> T.List[T.Union[FriendMessage, GroupMessage]]:
+    async def fetchMessage(self, count: int) -> T.List[T.Union[FriendMessage, GroupMessage, ExternalEvent]]:
         result = assertOperatorSuccess(
             await fetch.http_get(f"{self.baseurl}/fetchMessage", {
                 "sessionKey": self.session_key,
@@ -122,8 +140,14 @@ class MiraiProtocol:
             }
         ), raise_exception=True, return_as_is=True)
         for index in range(len(result)):
-            result[index] = \
-                ItemTypes[result[index]['type']].parser(result[index])
+            if result[index]['type'] in MessageTypes:
+                if 'messageChain' in result[index]:
+                    result[index]['messageChain'] = MessageChain.parse_obj(result[index]['messageChain'])
+                result[index] = \
+                    MessageTypes[result[index]['type']].parse_obj(result[index])
+            elif hasattr(ExternalEvents, result[index]['type']):
+                result[index] = \
+                    ExternalEvents[result[index]['type']].value.parse_obj(result[index])
         return result
 
     async def muteAll(self, target: T.Union[Group, int]) -> bool:
@@ -181,19 +205,19 @@ class MiraiProtocol:
                 "memberId": member if isinstance(member, int) else \
                     member.id if isinstance(member, Member) else \
                         raiser(ValueError("invaild target as member.")),
-                "info": setting.render()
+                "info": json.loads(setting.json())
             }
         ), raise_exception=True)
 
     async def groupConfig(self, group: T.Union[Group, int]) -> GroupSetting:
-        return GroupSetting.parser(
+        return GroupSetting.parse_obj(
             await fetch.http_get(f"{self.baseurl}/groupConfig", {
                 "sessionKey": self.session_key,
                 "target": group if isinstance(group, int) else \
                     group.id if isinstance(group, Group) else \
                         raiser(ValueError("invaild target as group."))
-            }
-        ))
+            })
+        )
 
     async def changeGroupConfig(self,
         group: T.Union[Group, int],
@@ -205,7 +229,7 @@ class MiraiProtocol:
                 "target": group if isinstance(group, int) else \
                     group.id if isinstance(group, Group) else \
                         raiser(ValueError("invaild target as group.")),
-                "config": config.render()
+                "config": json.loads(json.loads(config.json()))
             }
         ), raise_exception=True)
 
@@ -249,5 +273,25 @@ class MiraiProtocol:
                 "memberId": member if isinstance(member, int) else \
                     member.id if isinstance(member, Member) else \
                         raiser(ValueError("invaild target as member.")),
+            }
+        ), raise_exception=True)
+
+    async def kick(self,
+        group: T.Union[Group, int],
+        member: T.Union[Member, int],
+        kickMessage: T.Optional[str] = None
+    ):
+        return assertOperatorSuccess(
+            await fetch.http_post(f"{self.baseurl}/kick", {
+                "sessionKey": self.session_key,
+                "target": group if isinstance(group, int) else \
+                    group.id if isinstance(group, Group) else \
+                        raiser(ValueError("invaild target as group.")),
+                "memberId": member if isinstance(member, int) else \
+                    member.id if isinstance(member, Member) else \
+                        raiser(ValueError("invaild target as member.")),
+                **({
+                    "msg": kickMessage
+                } if kickMessage else {})
             }
         ), raise_exception=True)

@@ -8,6 +8,7 @@ pylint = "*"
 
 [packages]
 aiohttp = "*"
+pydantic = "*"
 
 [requires]
 python_version = "3.8"

@@ -1,4 +1,4 @@
-faces = {
+QQFaces = {
     "unknown": 0xff,
     "jingya": 0,
     "piezui": 1,

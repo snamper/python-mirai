@@ -23,6 +23,8 @@ def assertOperatorSuccess(result, raise_exception=False, return_as_is=False):
                     return result
                 else:
                     return True
+    if return_as_is:
+        return result
     return False
 
 class ImageType(Enum):
@@ -40,3 +42,7 @@ def findKey(mapping, value):
 
 def raiser(error):
     raise error
+
+def printer(val):
+    print(val)
+    return val

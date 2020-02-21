@@ -1,6 +1,8 @@
 import asyncio
 from mirai import Session, MiraiProtocol
-from mirai import MessageChain, PlainMessage, FriendMessage, GroupMessage, AtMessage
+from mirai import MessageChain, Plain, FriendMessage, GroupMessage, At
+from mirai.message.components import Unknown
+from mirai.misc import printer
 from pathlib import Path
 from pprint import pprint
 from typing import Union
@@ -12,15 +14,20 @@ async def main():
     async with Session(f"mirai://localhost:8080/?authKey={authKey}&qq={qq}") as session:
         print(session.enabled)
 
-        @session.receiver("FriendMessage")
-        @session.receiver("GroupMessage", lambda m: m.sender.id == 1846913566)
+        @session.receiver("GroupMessage", lambda m: m.sender.group.id == 655057127)
         async def _(
-                message: Union[FriendMessage, GroupMessage],
+                message: GroupMessage,
                 session_: Session, protocol: MiraiProtocol):
             if isinstance(message, GroupMessage):
                 await protocol.sendGroupMessage(
                     message.sender.group, 
-                    PlainMessage(text="meow.") + AtMessage(target=1846913566)
+                    (   
+                        Plain(text="meow."), 
+                        At(
+                            target=message.sender.id,
+                            display=f"@{message.sender.memberName}"
+                        )
+                    )
                 )
 
         #print(session.event)

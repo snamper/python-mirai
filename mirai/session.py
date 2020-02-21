@@ -4,8 +4,8 @@ from .network import fetch
 from .protocol import MiraiProtocol
 from .group import Group
 from .friend import Friend
-from .message.item import FriendMessage, GroupMessage, MessageItemType
-from .event import Event
+from .message.types import FriendMessage, GroupMessage, MessageTypes, MessageItemType
+from .event import InternalEvent, ExternalEvent, ExternalEventTypes, ExternalEvents
 import asyncio
 from threading import Thread, Lock
 import concurrent.futures
@@ -21,7 +21,7 @@ class Session(MiraiProtocol):
   enabled: bool = False
 
   event_stacks: asyncio.Queue
-  event: T.Dict[MessageItemType, T.List[T.Dict[
+  event: T.Dict[T.Union[GroupMessage, FriendMessage], T.List[T.Dict[
     T.Callable[
       [ # message
         T.Union[FriendMessage, GroupMessage]
@@ -155,10 +155,9 @@ class Session(MiraiProtocol):
 
   async def message_polling(self, exit_signal_status, queue, count=10):
     while not exit_signal_status():
-      #print("polling", random.random())
       await asyncio.sleep(0.5)
 
-      result: T.List[T.Union[FriendMessage, GroupMessage]] = \
+      result: T.List[T.Union[FriendMessage, GroupMessage, ExternalEvent]] = \
         await super().fetchMessage(count)
       last_length = len(result)
       latest_result = []
@@ -175,8 +174,10 @@ class Session(MiraiProtocol):
       # @event.receiver("GroupMessage", lambda info: info.......)
       for message_index in range(len(result)):
         await queue.put(
-          Event(
-            name=result[message_index].type,
+          InternalEvent(
+            name=result[message_index].type.value\
+              if isinstance(result[message_index].type, MessageItemType) else \
+                result[message_index].type,
             body=result[message_index]
           )
         )
@@ -201,12 +202,14 @@ class Session(MiraiProtocol):
 
   async def event_runner(self, exit_signal_status, queue: asyncio.Queue):
     while not exit_signal_status():
-      event_context: Event
+      event_context: InternalEvent
       try:
-        event_context: Event = await asyncio.wait_for(queue.get(), 30.0)
+        event_context: InternalEvent = await asyncio.wait_for(queue.get(), 2)
       except asyncio.exceptions.TimeoutError:
         if exit_signal_status():
           break
+        else:
+          continue
       if event_context.name in self.event:
         for event in self.event[event_context.name]:
           if event: # 判断是否有注册.
