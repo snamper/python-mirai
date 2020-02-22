@@ -1,6 +1,9 @@
 import mirai.misc
 import mirai.face
 import mirai.exceptions
+import mirai.logger
+
+import mirai.context
 
 import mirai.message.base
 import mirai.message.components

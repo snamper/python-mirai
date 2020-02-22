@@ -74,5 +74,3 @@ class ExternalEvents(Enum):
     MemberMuteEvent = external.MemberMuteEvent
     MemberUnmuteEvent = external.MemberUnmuteEvent
 
-    # python-mirai 自己提供的事件
-    # UnexceptedException = builtins.UnexceptedException

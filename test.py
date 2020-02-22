@@ -1,11 +1,11 @@
 import asyncio
 
-from mirai.message.components import At, Plain, Face
+from mirai.message.components import At, Plain, Face, Image
 from mirai.face import QQFaces
 from mirai.message.types import FriendMessage, GroupMessage
 from mirai.event.builtins import UnexceptedException
 from mirai.session import Session
-from mirai.context import MessageContextBody
+from mirai.prototypes.context import MessageContextBody
 from mirai.misc import printer
 import mirai.exceptions
 
@@ -39,6 +39,8 @@ async def main():
                             Face(faceId=QQFaces["jingkong"])
                         ]
                     ))
+                if Image in [type(i) for i in context.message.messageChain]:
+                    pass
 
         @session.exception_handler(mirai.exceptions.NetworkError)
         async def exception_handle(context: UnexceptedException):

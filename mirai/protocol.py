@@ -82,6 +82,8 @@ class MiraiProtocol:
                     if isinstance(message, BaseMessageComponent) else \
                         [json.loads(i.json()) for i in message]
                     if isinstance(message, (tuple, list)) else \
+                        message
+                    if isinstance(message, str) else \
                         raiser(ValueError("invaild message(s)."))
             }
         ), raise_exception=True)
@@ -294,5 +296,3 @@ class MiraiProtocol:
                 } if kickMessage else {})
             }
         ), raise_exception=True)
-
-from mirai.message.components import MessageComponents

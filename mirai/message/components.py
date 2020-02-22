@@ -1,11 +1,12 @@
 from enum import Enum
 import typing as T
 from uuid import UUID
-from mirai.misc import findKey, printer, justdo
+from mirai.misc import findKey, printer, ImageRegex, getMatchedString, randomRangedNumberString as rd
 from mirai.face import QQFaces
 from mirai.message.base import BaseMessageComponent, MessageComponentTypes
 from pydantic import Field, validator
 from pydantic.generics import GenericModel
+import re
 
 __all__ = [
     "Plain",
@@ -28,7 +29,9 @@ class Plain(BaseMessageComponent):
 
 class Source(BaseMessageComponent):
     type: MessageComponentTypes = "Source"
-    uid: int
+    id: int = Field(..., alias=['uid', 'id'])
+    # uid 兼容 mirai(version <= "0.18.0")
+    # 将在5个版本后撤出对于字段别名 uid 的支持.
 
     def toString(self):
         return ""
@@ -55,10 +58,25 @@ class Face(BaseMessageComponent):
 
 class Image(BaseMessageComponent):
     type: MessageComponentTypes = "Image"
-    imageId: str
+    imageId: UUID
+
+    @validator("imageId", always=True, pre=True)
+    @classmethod
+    def imageId_formater(cls, v):
+        imageType = "group"
+        uuid_string = getMatchedString(re.search(ImageRegex[imageType], v))
+        if not uuid_string:
+            imageType = "friend"
+            uuid_string = getMatchedString(re.search(ImageRegex[imageType], v))
+        if uuid_string:
+            return UUID(uuid_string)
 
     def toString(self):
         return f"[Image::{self.imageId}]"
+
+    @property
+    def url(self):
+        return f"http://gchat.qpic.cn/gchatpic_new/{rd()}/{rd()}-{rd()}-{self.imageId.hex.upper()}/0"
 
 class Unknown(BaseMessageComponent):
     type: MessageComponentTypes = "Unknown"
@@ -87,3 +105,7 @@ MessageComponents = {
 }
 
 from ..context import message, event
+from mirai.prototypes.context import (
+    MessageContextBody,
+    EventContextBody
+)

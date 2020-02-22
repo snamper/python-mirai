@@ -11,6 +11,7 @@ from threading import Thread, Lock
 from contextvars import ContextVar
 import random
 import traceback
+from mirai.logger import message as MessageLogger, event as EventLogger
 
 class Session(MiraiProtocol):
   cache_options: T.Dict[str, bool] = {}
@@ -21,17 +22,7 @@ class Session(MiraiProtocol):
   enabled: bool = False
 
   event_stacks: asyncio.Queue
-  event: T.Dict[T.Union[GroupMessage, FriendMessage], T.List[T.Dict[
-    T.Callable[
-      [ # message
-        T.Union[FriendMessage, GroupMessage]
-      ], bool],
-    T.Callable[
-      [ # message, session, parent_protocol
-        T.Union[FriendMessage, GroupMessage], "Session", "MiraiProtocol"
-      ], T.Awaitable[T.Any]
-    ]
-  ]]] = {}
+  event = {}
 
   async_runtime: Thread = None
   another_loop: asyncio.AbstractEventLoop
@@ -121,7 +112,7 @@ class Session(MiraiProtocol):
     qq: T.Optional[int] = None,
 
     cache_groups: T.Optional[bool] = True,
-    cache_friends: T.Optional[bool] = True,
+    cache_friends: T.Optional[bool] = True
   ):
     self = cls(url, host, port, authKey, qq, cache_groups, cache_friends)
     return await self.enable_session()
@@ -198,10 +189,10 @@ class Session(MiraiProtocol):
     return receiver_warpper
 
   async def event_runner(self, exit_signal_status, queue: asyncio.Queue):
-    from .context import (
+    from .prototypes.context import (
       MessageContextBody, EventContextBody, # body
-      message as MessageContext, event as EventContext # context_object
     )
+    from .context import message as MessageContext, event as EventContext
     while not exit_signal_status():
       event_context: InternalEvent
       try:
@@ -220,6 +211,7 @@ class Session(MiraiProtocol):
               except Exception as e:
                 if event_context.name != "UnexceptedException":
                   #print("error: by pre:", event_context.name)
+                  EventLogger.error(f"a error threw by {event_context.name}'s condition.")
                   await queue.put(InternalEvent(
                     name="UnexceptedException",
                     body=UnexceptedException(
@@ -239,24 +231,28 @@ class Session(MiraiProtocol):
                 internal_context_object: \
                   T.Union[MessageContext, EventContext]
                 if hasattr(ExternalEvents, event_context.name):
+                  EventLogger.info(f"[Event::{event_context.name}] is handling...")
                   internal_context_object = EventContext
                   context_body = EventContextBody(
                     event=event_context.body,
                     session=self
                   )
                 elif event_context.name in MessageTypes:
+                  MessageLogger.info(f"[Message::{event_context.name}] is handling...")
                   internal_context_object = MessageContext
                   context_body = MessageContextBody(
                     message=event_context.body,
                     session=self
                   )
                 else:
+                  EventLogger.warning("a unknown event is handling...")
                   context_body = event_context.body
                 internal_context_object.set(context_body) # 设置完毕.
                 try:
                   await run_body(context_body)
                 except Exception as e:
                   if event_context.name != "UnexceptedException":
+                    EventLogger.error(f"a error(Exception::{e.__class__.__name__}) threw by {event_context.name}'s processing body.")
                     await queue.put(InternalEvent(
                       name="UnexceptedException",
                       body=UnexceptedException(
@@ -310,6 +306,7 @@ class Session(MiraiProtocol):
             True
           )
     )
+
 
   async def refreshBotGroupsCache(self) -> T.Dict[int, Group]:
     self.cached_groups = {group.id: group for group in await super().groupList()}

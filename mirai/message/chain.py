@@ -27,3 +27,6 @@ class MessageChain(BaseModel):
                 lambda m: raiser(TypeError("invaild value"))
             ][not isinstance(message, dict)](message) for message in value
         ])
+
+    def __iter__(self):
+        yield from self.__root__
