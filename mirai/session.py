@@ -11,14 +11,12 @@ from threading import Thread, Lock
 from contextvars import ContextVar
 import random
 import traceback
-from datetime import datetime as dt
-import time
 
 class Session(MiraiProtocol):
   cache_options: T.Dict[str, bool] = {}
 
-  cached_groups: T.List[Group] = []
-  cached_friends: T.List[Friend] = []
+  cached_groups: T.Dict[int, Group] = {}
+  cached_friends: T.Dict[int, Friend] = {}
 
   enabled: bool = False
 
@@ -106,9 +104,9 @@ class Session(MiraiProtocol):
         raise ValueError('invaild args: unknown response')
     
     if self.cache_options['groups']:
-      self.cached_groups = await super().groupList()
+      self.cached_groups = {group.id: group for group in await super().groupList()}
     if self.cache_options['friends']:
-      self.cached_friends = await super().friendList()
+      self.cached_friends = {friend.id: friend for friend in await super().friendList()}
 
     self.enabled = True
     return self
@@ -312,5 +310,28 @@ class Session(MiraiProtocol):
             True
           )
     )
+
+  async def refreshBotGroupsCache(self) -> T.Dict[int, Group]:
+    self.cached_groups = {group.id: group for group in await super().groupList()}
+    return self.cached_groups
+  
+  async def refreshBotFriendsCache(self) -> T.Dict[int, Friend]:
+    self.cached_friends = {friend.id: friend for friend in await super().friendList()}
+    return self.cached_friends
+
+  async def cacheBotGroups(self):
+    if not self.cache_options['groups']:
+      self.cached_groups = {group.id: group for group in await super().groupList()}
+
+  async def cacheBotFriends(self):
+    if not self.cache_options['friends']:
+      self.cached_friends = {friend.id: friend for friend in await super().friendList()}
+
+  async def getGroup(self, target: int) -> T.Optional[Group]:
+    return self.cached_groups.get(target)
+  
+  async def getFriend(self, target: int) -> T.Optional[Friend]:
+    return self.cached_friends.get(target)
+
 
 from .event.builtins import UnexceptedException
