@@ -21,5 +21,7 @@ class EventContextBody(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
+
+
 message: ContextVar[MessageContextBody] = ContextVar("mirai.context.message")
 event: ContextVar[EventContextBody] = ContextVar("mirai.contexts.event")

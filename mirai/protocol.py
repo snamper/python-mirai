@@ -59,9 +59,9 @@ class MiraiProtocol:
             await fetch.http_post(f"{self.baseurl}/sendFriendMessage", {
                 "sessionKey": self.session_key,
                 "target": target,
-                "messageChain": json.loads(message.json() \
+                "messageChain": json.loads(message.json()) \
                     if isinstance(message, MessageChain) else \
-                        [json.loads(message.json())]) \
+                        [json.loads(message.json())] \
                     if isinstance(message, BaseMessageComponent) else \
                         [json.loads(i.json()) for i in message]
                     if isinstance(message, (tuple, list)) else \
@@ -73,12 +73,12 @@ class MiraiProtocol:
         return assertOperatorSuccess(
             await fetch.http_post(f"{self.baseurl}/sendGroupMessage", {
                 "sessionKey": self.session_key,
-                "target": target if isinstance(target, int) else \
+                "target": target if isinstance(target, (int, str)) else \
                     target.id if isinstance(target, Group) else \
                         raiser(ValueError("invaild target as group.")),
-                "messageChain": json.loads(message.json() \
+                "messageChain": json.loads(message.json()) \
                     if isinstance(message, MessageChain) else \
-                        [json.loads(message.json())]) \
+                        [json.loads(message.json())] \
                     if isinstance(message, BaseMessageComponent) else \
                         [json.loads(i.json()) for i in message]
                     if isinstance(message, (tuple, list)) else \

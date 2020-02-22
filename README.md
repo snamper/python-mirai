@@ -7,36 +7,51 @@
 
 ``` python
 import asyncio
+
 from mirai.message.components import At, Plain
 from mirai.message.types import FriendMessage, GroupMessage
-from mirai.message.chain import MessageChain
-from mirai.protocol import MiraiProtocol
+from mirai.event.builtins import UnexceptedException
 from mirai.session import Session
-from typing import Union
+from mirai.context import MessageContextBody
+
+from pprint import pprint
+from devtools import debug
 
 async def main():
-    authKey: str = "your authKey"
-    qq: int = "your qq"
+    authKey = "213we355gdfbaerg"
+    qq = 208924405
 
     async with Session(f"mirai://localhost:8080/?authKey={authKey}&qq={qq}") as session:
-        print(session.enabled) # 判断 session 是否已经可用
+        print(session.enabled)
 
-        @session.receiver("FriendMessage")
-        @session.receiver("GroupMessage", lambda m: m.sender.group.id == 234532452345) # 已经实现一些上下文应用
-        async def event_handler(
-                message: Union[FriendMessage, GroupMessage],
-                session_: Session):
-            if isinstance(message, GroupMessage):
-                await protocol.sendGroupMessage(
-                    message.sender.group,
-                    [PlainMessage(text="meow."), AtMessage(target=message.sender.id)]
-                )
+        @session.receiver("GroupMessage", lambda m: m.sender.group.id == 655057127) # 上下文支持
+        async def normal_handle(context):
+            if isinstance(context.message, GroupMessage): # 提供了基本的API
+                context: MessageContextBody
 
-        while True: # Session 不会帮你堵塞主线程, 自行实现一个吧.
-            try:
-                await asyncio.sleep(1)
-            except KeyboardInterrupt:
-                break
+                print(f"[{context.message.sender.group.id}][{context.message.sender.id}]:", context.message.messageChain.toString()) # toString方法的调用 在这之后会进行优化
+                if context.message.messageChain.toString().startswith("/raiseAnother"):
+                    raise ValueError("fa")
+                elif context.message.messageChain.toString().startswith("/raise"):
+                    raise Exception("test")
+                elif context.message.messageChain.toString().startswith("/meow"):
+                    await context.session.sendGroupMessage(
+                        context.event.body.sender.group.id,
+                        [Plain(text="meow."), At(target=context.message.sender.id)] # 
+                    )
 
-asyncio.run(main())
+        @session.exception_handler(Exception)
+        @session.exception_handler(ValueError)
+        async def exception_handle(context: UnexceptedException):
+            await context.session.sendGroupMessage(
+                context.event.body.sender.group.id,
+                Plain(text=f"{context.error.__class__.__name__}: {context.error.args}")
+            )
+        
+        await session.joinMainThread()
+
+try:
+    asyncio.run(main())
+except KeyboardInterrupt:
+    exit()
 ```

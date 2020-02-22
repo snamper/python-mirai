@@ -36,10 +36,13 @@ class ExternalEventTypes(Enum):
     MemberMuteEvent = "MemberMuteEvent"
     MemberUnmuteEvent = "MemberUnmuteEvent"
 
+    # python-mirai 自己提供的事件
+    UnexceptedException = "UnexceptedException"
+
 class ExternalEvent(BaseModel):
     type: ExternalEventTypes
 
-from ..event import external
+from . import external
 
 class ExternalEvents(Enum):
     BotOnlineEvent = external.BotOnlineEvent
@@ -70,3 +73,6 @@ class ExternalEvents(Enum):
     MemberPermissionChangeEvent = external.MemberPermissionChangeEvent
     MemberMuteEvent = external.MemberMuteEvent
     MemberUnmuteEvent = external.MemberUnmuteEvent
+
+    # python-mirai 自己提供的事件
+    # UnexceptedException = builtins.UnexceptedException

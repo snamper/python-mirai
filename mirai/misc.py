@@ -46,3 +46,7 @@ def raiser(error):
 def printer(val):
     print(val)
     return val
+
+def justdo(call, val):
+    print(call())
+    return val

@@ -1,5 +1,6 @@
 import mirai.misc
 import mirai.face
+import mirai.exceptions
 
 import mirai.message.base
 import mirai.message.components
@@ -7,6 +8,7 @@ import mirai.message.chain
 import mirai.message.types
 
 import mirai.event
+import mirai.event.builtins
 import mirai.event.external
 
 import mirai.friend

@@ -1,11 +1,17 @@
 import asyncio
-from typing import Union
 
-from mirai.message.components import At, Plain
+from mirai.message.components import At, Plain, Face
+from mirai.face import QQFaces
 from mirai.message.types import FriendMessage, GroupMessage
-from mirai.message.chain import MessageChain
-from mirai.protocol import MiraiProtocol
+from mirai.event.builtins import UnexceptedException
 from mirai.session import Session
+from mirai.context import MessageContextBody
+from mirai.misc import printer
+import mirai.exceptions
+
+from pprint import pprint
+from devtools import debug
+import traceback
 
 async def main():
     authKey = "213we355gdfbaerg"
@@ -15,15 +21,32 @@ async def main():
         print(session.enabled)
 
         @session.receiver("GroupMessage", lambda m: m.sender.group.id == 655057127)
-        async def _(context):
+        async def normal_handle(context):
             if isinstance(context.message, GroupMessage):
+                context: MessageContextBody
+
                 print(f"[{context.message.sender.group.id}][{context.message.sender.id}]:", context.message.messageChain.toString())
+                if context.message.messageChain.toString().startswith("/raiseAnother"):
+                    raise ValueError("fa")
+                elif context.message.messageChain.toString().startswith("/raise"):
+                    raise Exception("test")
+                elif context.message.messageChain.toString().startswith("/test-at"):
+                    print(await context.session.sendGroupMessage(
+                        context.message.sender.group.id,
+                        [
+                            printer(At(target=context.message.sender.id)),
+                            Plain(text="meow"),
+                            Face(faceId=QQFaces["jingkong"])
+                        ]
+                    ))
 
-        #print(session.event)
-        while True:
-            try:
-                await asyncio.sleep(1)
-            except KeyboardInterrupt:
-                break
+        @session.exception_handler(mirai.exceptions.NetworkError)
+        async def exception_handle(context: UnexceptedException):
+            debug(context)
+        
+        await session.joinMainThread()
 
-asyncio.run(main())
+try:
+    asyncio.run(main())
+except KeyboardInterrupt:
+    exit()

@@ -1,10 +1,11 @@
 from enum import Enum
 import typing as T
 from uuid import UUID
-from mirai.misc import findKey
+from mirai.misc import findKey, printer, justdo
 from mirai.face import QQFaces
 from mirai.message.base import BaseMessageComponent, MessageComponentTypes
-from pydantic import Field
+from pydantic import Field, validator
+from pydantic.generics import GenericModel
 
 __all__ = [
     "Plain",
@@ -15,6 +16,8 @@ __all__ = [
     "Image",
     "Unknown"
 ]
+
+TempType = T.TypeVar("TempType")
 
 class Plain(BaseMessageComponent):
     type: MessageComponentTypes = "Plain"
@@ -30,10 +33,9 @@ class Source(BaseMessageComponent):
     def toString(self):
         return ""
 
-class At(BaseMessageComponent):
+class At(GenericModel, BaseMessageComponent):
     type: MessageComponentTypes = "At"
     target: int
-    display: T.Optional[str]
 
     def toString(self):
         return f"[At::target={self.target},group={message.get().message.sender.group.id},sender={message.get().message.sender.id}]"
@@ -49,7 +51,7 @@ class Face(BaseMessageComponent):
     faceId: int
 
     def toString(self):
-        return f"[{findKey(QQFaces, self.faceId)}]"
+        return f"[Face::key={findKey(QQFaces, self.faceId)}]"
 
 class Image(BaseMessageComponent):
     type: MessageComponentTypes = "Image"

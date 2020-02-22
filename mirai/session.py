@@ -10,6 +10,9 @@ import asyncio
 from threading import Thread, Lock
 from contextvars import ContextVar
 import random
+import traceback
+from datetime import datetime as dt
+import time
 
 class Session(MiraiProtocol):
   cache_options: T.Dict[str, bool] = {}
@@ -187,11 +190,7 @@ class Session(MiraiProtocol):
         T.Callable[[T.Union[FriendMessage, GroupMessage]], bool]
       ] = None):
     def receiver_warpper(
-      func: T.Callable[
-        [ # message, session, parent_protocol
-          T.Union[FriendMessage, GroupMessage], "Session", "MiraiProtocol"
-        ], T.Awaitable[T.Any]
-      ]
+      func: T.Callable[[T.Union[FriendMessage, GroupMessage], "Session"], T.Awaitable[T.Any]]
     ):
       if event_name not in self.event:
         self.event[event_name] = [{addon_condition: func}]
@@ -218,7 +217,26 @@ class Session(MiraiProtocol):
         for event in self.event[event_context.name]:
           if event: # 判断是否有注册.
             for pre_condition, run_body in event.items():
-              if (not pre_condition) or (pre_condition(event_context.body)):
+              try:
+                condition_result = (not pre_condition) or (pre_condition(event_context.body))
+              except Exception as e:
+                if event_context.name != "UnexceptedException":
+                  #print("error: by pre:", event_context.name)
+                  await queue.put(InternalEvent(
+                    name="UnexceptedException",
+                    body=UnexceptedException(
+                      error=e,
+                      event=event_context,
+                      session=self
+                    )
+                  ))
+                else:
+                  traceback.print_exc()
+                continue
+              if condition_result:
+                MessageContext.set(None)
+                EventContext.set(None)
+
                 context_body: T.Union[MessageContextBody, EventContextBody]
                 internal_context_object: \
                   T.Union[MessageContext, EventContext]
@@ -228,15 +246,29 @@ class Session(MiraiProtocol):
                     event=event_context.body,
                     session=self
                   )
-                else:
+                elif event_context.name in MessageTypes:
                   internal_context_object = MessageContext
                   context_body = MessageContextBody(
                     message=event_context.body,
                     session=self
                   )
+                else:
+                  context_body = event_context.body
                 internal_context_object.set(context_body) # 设置完毕.
-
-                await run_body(context_body)
+                try:
+                  await run_body(context_body)
+                except Exception as e:
+                  if event_context.name != "UnexceptedException":
+                    await queue.put(InternalEvent(
+                      name="UnexceptedException",
+                      body=UnexceptedException(
+                        error=e,
+                        event=event_context,
+                        session=self
+                      )
+                    ))
+                  else:
+                    traceback.print_exc()
 
   async def close_session(self, ignoreError=False):
     if self.enabled:
@@ -261,3 +293,24 @@ class Session(MiraiProtocol):
     else:
       self.another_loop.call_soon_threadsafe(self.another_loop.stop)
       self.async_runtime.join()
+
+  async def joinMainThread(self):
+    while self.shared_lock.locked():
+      await asyncio.sleep(0.01)
+    else:
+      return True
+
+  def exception_handler(self, exception_class=None, addon_condition=None):
+    return self.receiver(
+      "UnexceptedException", 
+      lambda context: \
+          True \
+        if not exception_class else \
+          type(context.error) == exception_class and (
+            addon_condition(context) \
+              if addon_condition else \
+            True
+          )
+    )
+
+from .event.builtins import UnexceptedException
