@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from . import ExternalEvent, ExternalEventTypes as EventType
 from ..group import Permission, Group, Member
 from ..friend import Friend
+import typing as T
 
 class BotOnlineEvent(ExternalEvent):
     type: EventType = EventType.BotOnlineEvent
@@ -32,11 +33,11 @@ class BotGroupPermissionChangeEvent(ExternalEvent):
 class BotMuteEvent(ExternalEvent):
     type: EventType = EventType.BotMuteEvent
     durationSeconds: int
-    operator: Member
+    operator: T.Optional[Member]
 
 class BotUnmuteEvent(ExternalEvent):
     type: EventType = EventType.BotUnmuteEvent
-    operator: Member
+    operator: T.Optional[Member]
 
 class BotJoinGroupEvent(ExternalEvent):
     type: EventType = EventType.BotJoinGroupEvent
@@ -54,21 +55,21 @@ class GroupEntranceAnnouncementChangeEvent(ExternalEvent):
     origin: str
     new: str
     group: Group
-    operator: Member
+    operator: T.Optional[Member]
 
 class GroupMuteAllEvent(ExternalEvent):
     type: EventType = EventType.GroupMuteAllEvent
     origin: bool
     new: bool
     group: Group
-    operator: Member
+    operator: T.Optional[Member]
 
 class GroupAllowAnonymousChatEvent(ExternalEvent):
     type: EventType = EventType.GroupAllowAnonymousChatEvent
     origin: bool
     new: bool
     group: Group
-    operator: Member
+    operator: T.Optional[Member]
 
 class GroupAllowConfessTalkEvent(ExternalEvent):
     type: EventType = EventType.GroupAllowAnonymousChatEvent
@@ -82,7 +83,7 @@ class GroupAllowMemberInviteEvent(ExternalEvent):
     origin: bool
     new: bool
     group: Group
-    operator: Member
+    operator: T.Optional[Member]
 
 class MemberJoinEvent(ExternalEvent):
     type: EventType = EventType.MemberJoinEvent
@@ -91,7 +92,7 @@ class MemberJoinEvent(ExternalEvent):
 class MemberLeaveEventKick(ExternalEvent):
     type: EventType = EventType.MemberLeaveEventKick
     member: Member
-    operator: Member
+    operator: T.Optional[Member]
 
 class MemberLeaveEventQuit(ExternalEvent):
     type: EventType = EventType.MemberLeaveEventQuit
@@ -102,7 +103,7 @@ class MemberCardChangeEvent(ExternalEvent):
     origin: str
     new: str
     member: Member
-    operator: Member
+    operator: T.Optional[Member]
 
 class MemberSpecialTitleChangeEvent(ExternalEvent):
     type: EventType = EventType.MemberSpecialTitleChangeEvent
@@ -120,9 +121,9 @@ class MemberMuteEvent(ExternalEvent):
     type: EventType = EventType.MemberMuteEvent
     durationSeconds: int
     member: Member
-    operator: Member
+    operator: T.Optional[Member]
 
 class MemberUnmuteEvent(ExternalEvent):
     type: EventType = EventType.MemberUnmuteEvent
     member: Member
-    operator: Member
+    operator: T.Optional[Member]

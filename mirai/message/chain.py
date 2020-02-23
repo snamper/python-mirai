@@ -30,3 +30,6 @@ class MessageChain(BaseModel):
 
     def __iter__(self):
         yield from self.__root__
+
+    def __getitem__(self, index):
+        return self.__root__[index]

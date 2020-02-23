@@ -34,9 +34,7 @@ class Plain(BaseMessageComponent):
 
 class Source(BaseMessageComponent):
     type: MessageComponentTypes = "Source"
-    id: int = Field(..., alias=['uid', 'id'])
-    # uid 兼容 mirai(version <= "0.18.0")
-    # 将在5个版本后撤出对于字段别名 uid 的支持.
+    id: int
 
     def toString(self):
         return ""

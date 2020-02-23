@@ -1,6 +1,6 @@
 from ..message.types import FriendMessage, GroupMessage
 from pydantic import BaseModel
-from ..event import ExternalEvents
+from ..event import ExternalEvent
 from typing import Union
 from ..session import Session
 
@@ -12,7 +12,7 @@ class MessageContextBody(BaseModel):
         arbitrary_types_allowed = True
 
 class EventContextBody(BaseModel):
-    event: ExternalEvents
+    event: ExternalEvent
     session: Session
 
     class Config:

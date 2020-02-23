@@ -12,6 +12,7 @@ from contextvars import ContextVar
 import random
 import traceback
 from mirai.logger import message as MessageLogger, event as EventLogger
+from mirai.misc import printer
 
 class Session(MiraiProtocol):
   cache_options: T.Dict[str, bool] = {}
@@ -165,12 +166,18 @@ class Session(MiraiProtocol):
       # 事件系统实际上就是"lambda", 指定事件名称(like. GroupMessage), 然后lambda判断.
       # @event.receiver("GroupMessage", lambda info: info.......)
       for message_index in range(len(result)):
-        #print(result[message_index])
+        item = result[message_index]
         await queue.put(
           InternalEvent(
-            name=result[message_index].type.value\
-              if isinstance(result[message_index].type, MessageItemType) else \
-                result[message_index].type,
+            name=item.__class__.__name__ if isinstance(item, ( # normal class
+                  UnexceptedException,
+                  ExternalEvent,
+                )) else item.__name__ if item in [ # pydantic model
+                  GroupMessage,
+                  FriendMessage
+                ] else item.name if isinstance(item, ( # enum
+                  ExternalEvents
+                )) else item,
             body=result[message_index]
           )
         )
@@ -203,8 +210,10 @@ class Session(MiraiProtocol):
           break
         else:
           continue
-      if event_context.name in self.event:
-        for event in self.event[event_context.name]:
+
+      if event_context.name in self.getRegisteredEventNames:
+        for event in list(self.event.values())\
+              [self.getRegisteredEventNames.index(event_context.name)]:
           if event: # 判断是否有注册.
             for pre_condition, run_body in event.items():
               try:
@@ -331,6 +340,18 @@ class Session(MiraiProtocol):
   
   async def getFriend(self, target: int) -> T.Optional[Friend]:
     return self.cached_friends.get(target)
+
+  @property
+  def getRegisteredEventNames(self):
+    return [i.__name__ if isinstance(i, ( # normal class
+      UnexceptedException,
+      ExternalEvent,
+    )) else i.__name__ if i in [ # pydantic model
+      GroupMessage,
+      FriendMessage
+    ] else i.name if isinstance(i, ( # enum
+      ExternalEvents
+    )) else i for i in self.event.keys()]
 
 
 from .event.builtins import UnexceptedException
