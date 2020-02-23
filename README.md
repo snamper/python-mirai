@@ -4,6 +4,14 @@
 以 OICQ(QQ) 协议驱动的高性能机器人开发框架 [Mirai](https://github.com/mamoe/mirai) 的 Python 接口, 通过其提供的 `HTTP API` 与无头客户端(`Mirai`)交互.
 
 ### 开始使用
+#### 从 Pypi 安装
+~~绝对不是因为 `mirai` 被抢注了的原因才使用的 `kuriyama` (栗山)~~
+``` bash
+pip install kuriyama
+```
+
+#### 开始开发
+
 由于 `python-mirai` 依赖于 `mirai` 提供的 `mirai-http-api` 插件, 所以你需要先运行一个 `mirai-core` 或是 `mirai-console` 实例以支撑你的应用运行.
 
 很不幸的是, 截至 `2020-02-23` 前, 我们仍然不能给出一份完备的文档作为开发参考, 不过这个问题将会在不久的将来解决.

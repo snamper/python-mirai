@@ -1,10 +1,10 @@
 from setuptools import setup
 
-with open("README.md", "r") as fh:
+with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setup(
-    name="mirai",
+    name="kuriyama",
     version='0.1.0',
     description='A framework for OICQ(QQ, made by Tencent) headless client "Mirai".',
     author='Chenwe-i-lin',
