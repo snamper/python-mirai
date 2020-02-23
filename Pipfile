@@ -10,6 +10,7 @@ devtools = "*"
 [packages]
 aiohttp = "*"
 pydantic = "*"
+pillow = "*"
 
 [requires]
 python_version = "3.8"

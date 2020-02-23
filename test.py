@@ -6,7 +6,7 @@ from mirai.message.types import FriendMessage, GroupMessage
 from mirai.event.builtins import UnexceptedException
 from mirai.session import Session
 from mirai.prototypes.context import MessageContextBody
-from mirai.misc import printer
+from mirai.misc import printer, ImageType
 import mirai.exceptions
 
 from pprint import pprint
@@ -39,10 +39,18 @@ async def main():
                             Face(faceId=QQFaces["jingkong"])
                         ]
                     ))
+                elif context.message.messageChain.toString().startswith("/test-localimage"):
+                    await context.session.sendGroupMessage(
+                        context.message.sender.group.id,
+                        [
+                            await Image.fromFileSystem("2019-05-04_15.52.03.png", session, ImageType.Group),
+                            Plain(text="faq")
+                        ]
+                    )
                 if Image in [type(i) for i in context.message.messageChain]:
                     pass
 
-        @session.exception_handler(mirai.exceptions.NetworkError)
+        @session.exception_handler(Exception)
         async def exception_handle(context: UnexceptedException):
             debug(context)
         

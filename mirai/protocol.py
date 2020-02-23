@@ -10,12 +10,11 @@ from mirai.message.types import FriendMessage, GroupMessage, MessageTypes
 from mirai.event import ExternalEvent, ExternalEvents
 from mirai.friend import Friend
 from mirai.group import Group, GroupSetting, Member, MemberChangeableSetting
-from mirai.image import Image
 from mirai.message.chain import MessageChain
-from mirai.misc import ImageRegex, ImageType, assertOperatorSuccess, raiser, printer
+from mirai.misc import ImageRegex, ImageType, assertOperatorSuccess, raiser, printer, getMatchedString
 from mirai.network import fetch
 from mirai.message.base import BaseMessageComponent
-#from .context import MessageContext
+from mirai.message.components import Image
 import threading
 
 class MiraiProtocol:
@@ -63,8 +62,17 @@ class MiraiProtocol:
                     if isinstance(message, MessageChain) else \
                         [json.loads(message.json())] \
                     if isinstance(message, BaseMessageComponent) else \
-                        [json.loads(i.json()) for i in message]
+                        [
+                            json.loads(i.json()) \
+                                if type(i) != Image else \
+                                {
+                                    "type": "Image", "imageId": i.asFriendImage()
+                                } \
+                            for i in message
+                        ]
                     if isinstance(message, (tuple, list)) else \
+                        message
+                    if isinstance(message, str) else \
                         raiser(ValueError("invaild message(s)."))
             }
         ), raise_exception=True)
@@ -80,7 +88,14 @@ class MiraiProtocol:
                     if isinstance(message, MessageChain) else \
                         [json.loads(message.json())] \
                     if isinstance(message, BaseMessageComponent) else \
-                        [json.loads(i.json()) for i in message]
+                        [
+                            json.loads(i.json()) \
+                                if type(i) != Image else \
+                                {
+                                    "type": "Image", "imageId": i.asGroupImage()
+                                } \
+                            for i in message
+                        ]
                     if isinstance(message, (tuple, list)) else \
                         message
                     if isinstance(message, str) else \
@@ -121,17 +136,13 @@ class MiraiProtocol:
             raise FileNotFoundError("invaild image path.")
 
         regex = ImageRegex[type if isinstance(type, str) else type.value]
-        uuid_string = re.search(regex, 
-            await fetch.upload(f"{self.baseurl}/uploadImage", imagePath, {
-                "sessionKey": self.session_key,
-                "type": type if isinstance(type, str) else type.value
-            }
-        ))
-
-        return Image(
-            id=UUID(uuid_string.string[slice(*uuid_string.span())]),
-            suffix=imagePath.suffix[1:]
-        )
+        post_result = await fetch.upload(f"{self.baseurl}/uploadImage", imagePath, {
+            "sessionKey": self.session_key,
+            "type": type if isinstance(type, str) else type.value
+        })
+        uuid_string = re.search(regex, post_result)
+        if uuid_string:
+            return Image(imageId=UUID(getMatchedString(uuid_string)))
 
     async def fetchMessage(self, count: int) -> T.List[T.Union[FriendMessage, GroupMessage, ExternalEvent]]:
         result = assertOperatorSuccess(

@@ -8,6 +8,8 @@ import aiohttp
 from mirai.exceptions import NetworkError
 from mirai.logger import network
 
+session = aiohttp.ClientSession()
+
 class fetch:
     @staticmethod
     async def http_post(url, data_map):
@@ -31,7 +33,7 @@ class fetch:
         return json.loads(data)
 
     @staticmethod
-    async def http_get(url, params):
+    async def http_get(url, params=None):
         async with aiohttp.ClientSession() as session:
             async with session.get(url, params=params) as response:
                 network.debug("".join([
@@ -59,4 +61,4 @@ class fetch:
                     f"server responsed [status::{response.status}], ",
                     f"[data::{await response.text('utf-8')}]"
                 ]))
-                return await response.text()
+                return await response.text("utf-8")

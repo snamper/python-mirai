@@ -1,6 +1,6 @@
 import typing as T
 from urllib import parse
-from .network import fetch
+from .network import fetch, session
 from .protocol import MiraiProtocol
 from .group import Group
 from .friend import Friend
@@ -143,6 +143,7 @@ class Session(MiraiProtocol):
 
   async def __aexit__(self, exc_type, exc, tb):
     await self.close_session(ignoreError=True)
+    await session.close()
 
   async def message_polling(self, exit_signal_status, queue, count=10):
     while not exit_signal_status():
@@ -261,6 +262,7 @@ class Session(MiraiProtocol):
                         session=self
                       )
                     ))
+                    traceback.print_exc()
                   else:
                     traceback.print_exc()
 

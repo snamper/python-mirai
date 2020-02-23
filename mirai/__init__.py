@@ -16,7 +16,6 @@ import mirai.event.external
 
 import mirai.friend
 import mirai.group
-import mirai.image
 
 import mirai.network
 import mirai.protocol

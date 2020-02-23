@@ -6,6 +6,11 @@ from mirai.face import QQFaces
 from mirai.message.base import BaseMessageComponent, MessageComponentTypes
 from pydantic import Field, validator
 from pydantic.generics import GenericModel
+from mirai.network import fetch, session
+from mirai.misc import ImageType
+from io import BytesIO
+from PIL import Image as PILImage
+from pathlib import Path
 import re
 
 __all__ = [
@@ -63,13 +68,16 @@ class Image(BaseMessageComponent):
     @validator("imageId", always=True, pre=True)
     @classmethod
     def imageId_formater(cls, v):
-        imageType = "group"
-        uuid_string = getMatchedString(re.search(ImageRegex[imageType], v))
-        if not uuid_string:
-            imageType = "friend"
+        if isinstance(v, str):
+            imageType = "group"
             uuid_string = getMatchedString(re.search(ImageRegex[imageType], v))
-        if uuid_string:
-            return UUID(uuid_string)
+            if not uuid_string:
+                imageType = "friend"
+                uuid_string = getMatchedString(re.search(ImageRegex[imageType], v))
+            if uuid_string:
+                return UUID(uuid_string)
+        elif isinstance(v, UUID):
+            return v
 
     def toString(self):
         return f"[Image::{self.imageId}]"
@@ -77,6 +85,24 @@ class Image(BaseMessageComponent):
     @property
     def url(self):
         return f"http://gchat.qpic.cn/gchatpic_new/{rd()}/{rd()}-{rd()}-{self.imageId.hex.upper()}/0"
+
+    def asGroupImage(self) -> str:
+        return f"{{{str(self.imageId).upper()}}}.jpg"
+
+    def asFriendImage(self) -> str:
+        return f"/{str(self.imageId)}"
+
+    async def getPillowImage(self) -> PILImage.Image:
+        async with session.get(self.url) as response:
+            return PILImage.open(BytesIO(await response.read()))
+
+    @classmethod
+    async def fromFileSystem(cls, 
+            path: T.Union[Path, str],
+            miraiSession: "MiraiProtocol",
+            imageType: ImageType
+        ) -> "Image":
+        return await miraiSession.uploadImage(imageType, path)
 
 class Unknown(BaseMessageComponent):
     type: MessageComponentTypes = "Unknown"
@@ -109,3 +135,4 @@ from mirai.prototypes.context import (
     MessageContextBody,
     EventContextBody
 )
+from mirai.protocol import MiraiProtocol
