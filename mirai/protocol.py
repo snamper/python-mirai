@@ -76,6 +76,12 @@ class MiraiProtocol:
             }
         ), raise_exception=True)
 
+    async def revokeMessage(self, source: T.Union[components.Source, int]):
+        return assertOperatorSuccess(await fetch.http_post(f"{self.baseurl}/recall", {
+            "sessionKey": self.session_key,
+            "target": source if isinstance(source, int) else source.id
+        }), raise_exception=True)
+
     async def groupList(self) -> T.List[Group]:
         return [Group.parse_obj(group_info) \
             for group_info in await fetch.http_get(f"{self.baseurl}/groupList", {
