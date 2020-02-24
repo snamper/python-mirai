@@ -136,13 +136,13 @@ class MiraiProtocol:
                 "count": count
             }
         ), raise_exception=True, return_as_is=True)
-        for index in range(len(result)):
-            if result[index]['type'] in MessageTypes:
-                if 'messageChain' in result[index]:
+        for index in range(len(result)): # 因为重新生成一个开销太大, 所以就直接在原数据内进行遍历替换
+            if result[index]['type'] in MessageTypes: # 判断当前项是否为 Message
+                if 'messageChain' in result[index]: # 使用 custom_parse 方法处理消息链
                     result[index]['messageChain'] = MessageChain.custom_parse(result[index]['messageChain'])
                 result[index] = \
                     MessageTypes[result[index]['type']].parse_obj(result[index])
-            elif hasattr(ExternalEvents, result[index]['type']):
+            elif hasattr(ExternalEvents, result[index]['type']): # 判断当前项是否为 Event
                 result[index] = \
                     ExternalEvents[result[index]['type']].value.parse_obj(result[index])
         return result

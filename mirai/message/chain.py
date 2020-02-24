@@ -16,18 +16,16 @@ class MessageChain(BaseModel):
             self.__root__ += value.__root__
             return self
 
-    def toString(self):
+    def toString(self) -> str:
         return "".join([i.toString() for i in self.__root__])
 
     @classmethod
     def custom_parse(cls, value: T.List[T.Any]):
         from .components import ComponentTypes
-        return cls(__root__=[
-            [   
-                lambda m: ComponentTypes.__members__[m['type']].value(**m),
-                lambda m: raiser(TypeError("invaild value"))
-            ][not isinstance(message, dict)](message) for message in value
-        ])
+        for i in value:
+            if not isinstance(i, dict):
+                raise TypeError("invaild value")
+        return cls(__root__=[ComponentTypes.__members__[m['type']].value(**m) for m in value])
 
     def __iter__(self):
         yield from self.__root__
