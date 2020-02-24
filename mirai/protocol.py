@@ -62,12 +62,17 @@ class MiraiProtocol:
             }
         ), raise_exception=True)
     
-    async def sendGroupMessage(self, group: T.Union[Group, int], message: MessageChain):
+    async def sendGroupMessage(self,
+            group: T.Union[Group, int],
+            message: MessageChain,
+            quoteSource: T.Union[int, components.Source]=None):
         return assertOperatorSuccess(
             await fetch.http_post(f"{self.baseurl}/sendGroupMessage", {
                 "sessionKey": self.session_key,
                 "target": self.handleTargetAsGroup(group),
-                "messageChain": self.handleMessageAsGroup(message)
+                "messageChain": self.handleMessageAsGroup(message),
+                **({"quote": quoteSource if isinstance(quoteSource, components.Source) else quoteSource.id}\
+                    if quoteSource else {})
             }
         ), raise_exception=True)
 
@@ -247,18 +252,6 @@ class MiraiProtocol:
                 } if kickMessage else {})
             }
         ), raise_exception=True)
-
-    async def sendQuoteMessage(self,
-        target: T.Union[components.Source, int],
-        message: MessageChain
-    ):
-        return assertOperatorSuccess(await fetch.http_post(f"{self.baseurl}/sendQuoteMessage", {
-            "sessionKey": self.session_key,
-            "target": target if isinstance(target, int) else\
-                target.id if isinstance(target, components.Source) else\
-                    raiser(ValueError("invaild source id/uid")),
-            "messageChain": self.handleMessageAsGroup(message)
-        }), raise_exception=True)
 
     def handleMessageAsGroup(
         self,
