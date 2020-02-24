@@ -53,8 +53,7 @@ class MiraiProtocol:
                 BaseMessageComponent,
                 T.List[BaseMessageComponent],
                 str
-            ]
-    ) -> BotMessage:
+            ]) -> BotMessage:
         return BotMessage.parse_obj(assertOperatorSuccess(
             await fetch.http_post(f"{self.baseurl}/sendFriendMessage", {
                 "sessionKey": self.session_key,

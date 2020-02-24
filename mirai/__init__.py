@@ -11,7 +11,7 @@ from mirai.logger import (
 )
 
 from mirai.context import (
-    Direct as direct
+    Direct
 )
 
 import mirai.message.base

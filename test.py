@@ -16,7 +16,8 @@ from mirai import (
     QQFaces,
     Session,
     UnexceptedException,
-    ImageType
+    ImageType,
+    Direct
 )
 from mirai.event import external
 
@@ -28,7 +29,7 @@ async def main():
     async with Session(f"mirai://localhost:8080/?authKey={authKey}&qq={qq}") as session:
         print(session.enabled)
 
-        @session.receiver(GroupMessage)
+        @session.receiver(GroupMessage, lambda _: Direct.message)
         async def normal_handle(context):
             if isinstance(context.message, GroupMessage):
                 context: MessageContextBody

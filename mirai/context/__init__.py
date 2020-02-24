@@ -3,7 +3,13 @@ from contextvars import ContextVar
 message = ContextVar("mirai.context.message")
 event = ContextVar("mirai.contexts.event")
 
-Direct = type("Direct", (), {
-    "message": property(lambda self: message.get()),
-    "event": property(lambda self: event.get())
-})
+class _DirectPrototype:
+    @property
+    def message(self):
+        return message.get()
+
+    @property
+    def event(self):
+        return event.get()
+
+Direct = _DirectPrototype()
