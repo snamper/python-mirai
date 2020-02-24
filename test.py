@@ -1,19 +1,25 @@
 import asyncio
+import traceback
+from pprint import pprint
 
-from mirai.message.components import At, Plain, Face, Image
-from mirai.face import QQFaces
-from mirai.message.types import FriendMessage, GroupMessage
-from mirai.event.builtins import UnexceptedException
-from mirai.session import Session
-from mirai.prototypes.context import MessageContextBody
-from mirai.misc import printer, ImageType
-import mirai.exceptions
-from mirai.event import ExternalEvents
+from devtools import debug
+
+from mirai import (
+    At,
+    ExternalEvents, 
+    Face,
+    FriendMessage,
+    GroupMessage,
+    Image,
+    MessageContextBody,
+    Plain,
+    QQFaces,
+    Session,
+    UnexceptedException,
+    ImageType
+)
 from mirai.event import external
 
-from pprint import pprint
-from devtools import debug
-import traceback
 
 async def main():
     authKey = "213we355gdfbaerg"
@@ -22,7 +28,7 @@ async def main():
     async with Session(f"mirai://localhost:8080/?authKey={authKey}&qq={qq}") as session:
         print(session.enabled)
 
-        @session.receiver(GroupMessage, lambda m: m.sender.group.id == 655057127)
+        @session.receiver(GroupMessage)
         async def normal_handle(context):
             if isinstance(context.message, GroupMessage):
                 context: MessageContextBody
@@ -62,21 +68,20 @@ async def main():
                         context.message.sender.id
                     )
                 elif context.message.messageChain.toString().startswith("/replyMe"):
-                    await context.session.sendQuoteMessage(
-                       context.message.messageChain[0].id,
-                       [Plain(text="??")]
-                    )
-                if Image in [type(i) for i in context.message.messageChain]:
+                    debug(await context.session.sendGroupMessage(
+                        context.message.sender.group.id,
+                        [Plain(text="reply da!")],
+                        quoteSource=context.message.messageChain.getSource()
+                    ))
+                if context.message.messageChain.hasComponent(Image):
                     pass
 
         @session.receiver(ExternalEvents.MemberMuteEvent)
-        #@session.receiver(ExternalEvents.BotMuteEvent)
-        #@session.receiver("BotMuteEvent")
         @session.receiver(external.BotMuteEvent)
         async def _(context):
             debug(context)
 
-        @session.exception_handler(Exception)
+        @session.exception_handler(UnexceptedException)
         async def exception_handle(context: UnexceptedException):
             debug(context)
         

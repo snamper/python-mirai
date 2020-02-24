@@ -13,6 +13,7 @@ import random
 import traceback
 from mirai.logger import message as MessageLogger, event as EventLogger
 from mirai.misc import printer
+import inspect
 
 class Session(MiraiProtocol):
   cache_options: T.Dict[str, bool] = {}
@@ -135,9 +136,6 @@ class Session(MiraiProtocol):
     self.async_runtime.start()
 
   async def __aenter__(self) -> "Session":
-    #self.polling_runtime.__enter__() # 短轮询运行时启动
-    #self.event_runtime.__enter__()
-    #self.shared_runtime.__enter__()
     self.setting_event_runtime()
     self.start_event_runtime()
     return await self.enable_session()
@@ -169,16 +167,8 @@ class Session(MiraiProtocol):
         item = result[message_index]
         await queue.put(
           InternalEvent(
-            name=item.__class__.__name__ if isinstance(item, ( # normal class
-                  UnexceptedException,
-                  ExternalEvent,
-                )) else item.__name__ if item in [ # pydantic model
-                  GroupMessage,
-                  FriendMessage
-                ] else item.name if isinstance(item, ( # enum
-                  ExternalEvents
-                )) else item,
-            body=result[message_index]
+            name=self.getEventCurrentName(type(item)),
+            body=item
           )
         )
 
@@ -211,9 +201,9 @@ class Session(MiraiProtocol):
         else:
           continue
 
-      if event_context.name in self.getRegisteredEventNames:
+      if event_context.name in self.registeredEventNames:
         for event in list(self.event.values())\
-              [self.getRegisteredEventNames.index(event_context.name)]:
+              [self.registeredEventNames.index(event_context.name)]:
           if event: # 判断是否有注册.
             for pre_condition, run_body in event.items():
               try:
@@ -341,17 +331,31 @@ class Session(MiraiProtocol):
   async def getFriend(self, target: int) -> T.Optional[Friend]:
     return self.cached_friends.get(target)
 
-  @property
-  def getRegisteredEventNames(self):
-    return [i.__name__ if isinstance(i, ( # normal class
+  def getEventCurrentName(self, event_value):
+    if inspect.isclass(event_value) and issubclass(event_value, ExternalEvent): # subclass
+      return event_value.__name__
+    elif isinstance(event_value, ( # normal class
       UnexceptedException,
-      ExternalEvent,
-    )) else i.__name__ if i in [ # pydantic model
       GroupMessage,
       FriendMessage
-    ] else i.name if isinstance(i, ( # enum
+    )):
+      return event_value.__name__
+    elif event_value in [ # message
+      GroupMessage,
+      FriendMessage
+    ]:
+      return event_value.__name__
+    elif isinstance(event_value, ( # enum
+      MessageItemType,
       ExternalEvents
-    )) else i for i in self.event.keys()]
+    )):
+      return event_value.name
+    else:
+      return event_value
+
+  @property
+  def registeredEventNames(self):
+    return [self.getEventCurrentName(i) for i in self.event.keys()]
 
 
 from .event.builtins import UnexceptedException

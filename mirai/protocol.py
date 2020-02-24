@@ -5,7 +5,7 @@ from pathlib import Path
 from uuid import UUID
 import json
 
-from mirai.message.types import FriendMessage, GroupMessage, MessageTypes
+from mirai.message.types import FriendMessage, GroupMessage, BotMessage, MessageTypes
 
 from mirai.event import ExternalEvent, ExternalEvents
 from mirai.friend import Friend
@@ -53,28 +53,29 @@ class MiraiProtocol:
                 BaseMessageComponent,
                 T.List[BaseMessageComponent]
             ]
-    ):
-        return assertOperatorSuccess(
+    ) -> BotMessage:
+        return BotMessage.parse_obj(assertOperatorSuccess(
             await fetch.http_post(f"{self.baseurl}/sendFriendMessage", {
                 "sessionKey": self.session_key,
                 "target": self.handleTargetAsFriend(friend),
                 "messageChain": self.handleMessageAsFriend(message)
             }
-        ), raise_exception=True)
+        ), raise_exception=True, return_as_is=True))
     
     async def sendGroupMessage(self,
             group: T.Union[Group, int],
             message: MessageChain,
-            quoteSource: T.Union[int, components.Source]=None):
-        return assertOperatorSuccess(
+            quoteSource: T.Union[int, components.Source]=None) -> BotMessage:
+        return BotMessage.parse_obj(assertOperatorSuccess(
             await fetch.http_post(f"{self.baseurl}/sendGroupMessage", {
                 "sessionKey": self.session_key,
                 "target": self.handleTargetAsGroup(group),
                 "messageChain": self.handleMessageAsGroup(message),
-                **({"quote": quoteSource if isinstance(quoteSource, components.Source) else quoteSource.id}\
+                **({"quote": quoteSource.id \
+                        if isinstance(quoteSource, components.Source) else quoteSource}\
                     if quoteSource else {})
             }
-        ), raise_exception=True)
+        ), raise_exception=True, return_as_is=True))
 
     async def revokeMessage(self, source: T.Union[components.Source, int]):
         return assertOperatorSuccess(await fetch.http_post(f"{self.baseurl}/recall", {

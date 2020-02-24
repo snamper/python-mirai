@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from .base import BaseMessageComponent
 from ..misc import raiser, printer
+from .components import Source
 
 class MessageChain(BaseModel):
     __root__: T.List[T.Any] = []
@@ -33,3 +34,21 @@ class MessageChain(BaseModel):
 
     def __getitem__(self, index):
         return self.__root__[index]
+
+    def hasComponent(self, component_class) -> bool:
+        for i in self:
+            if type(i) == component_class:
+                return True
+        else:
+            return False
+
+    def getFirstComponent(self, component_class) -> T.Optional[BaseMessageComponent]:
+        for i in self:
+            if type(i) == component_class:
+                return i
+
+    def getAllofComponent(self, component_class) -> T.List[BaseMessageComponent]:
+        return [i for i in self if type(i) == component_class]
+
+    def getSource(self) -> Source:
+        return self.getFirstComponent(Source)

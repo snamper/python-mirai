@@ -1,22 +1,96 @@
-import mirai.misc
-import mirai.face
-import mirai.exceptions
-import mirai.logger
+from mirai.misc import (
+    ImageType
+)
+from mirai.face import QQFaces
+from mirai.exceptions import NetworkError
+from mirai.logger import (
+    network,
+    event,
+    message,
+    normal
+)
 
-import mirai.context
+from mirai.context import (
+    Direct as direct
+)
 
 import mirai.message.base
-import mirai.message.components
-import mirai.message.chain
-import mirai.message.types
+from mirai.message.components import (
+    At,
+    Plain,
+    Source,
+    AtAll,
+    Face,
+    Image
+)
+from mirai.message.chain import (
+    MessageChain
+)
+from mirai.message.types import (
+    GroupMessage,
+    FriendMessage,
+    BotMessage
+)
 
-import mirai.event
-import mirai.event.builtins
-import mirai.event.external
+from mirai.event import (
+    InternalEvent,
+    ExternalEvent,
+    ExternalEvents
+)
+from mirai.event.builtins import (
+    UnexceptedException
+)
+from mirai.event.external import (
+    BotOnlineEvent,
+    BotOfflineEventActive,
+    BotOfflineEventForce,
+    BotOfflineEventDropped,
+    BotReloginEvent,
+    BotGroupPermissionChangeEvent,
+    BotMuteEvent,
+    BotUnmuteEvent,
+    BotJoinGroupEvent,
 
-import mirai.friend
-import mirai.group
+    GroupNameChangeEvent,
+    GroupEntranceAnnouncementChangeEvent,
+    GroupMuteAllEvent,
+
+    # 群设置被修改事件
+    GroupAllowAnonymousChatEvent,
+    GroupAllowConfessTalkEvent,
+    GroupAllowMemberInviteEvent,
+
+    # 群事件(被 Bot 监听到的, 为"被动事件", 其中 Bot 身份为第三方.)
+    MemberJoinEvent,
+    MemberLeaveEventKick,
+    MemberLeaveEventQuit,
+    MemberCardChangeEvent,
+    MemberSpecialTitleChangeEvent,
+    MemberPermissionChangeEvent,
+    MemberMuteEvent,
+    MemberUnmuteEvent
+)
+
+from mirai.friend import (
+    Friend
+)
+from mirai.group import (
+    Group,
+    Member,
+    MemberChangeableSetting,
+    Permission,
+    GroupSetting
+)
 
 import mirai.network
 import mirai.protocol
-import mirai.session
+from mirai.session import (
+    Session
+)
+
+
+
+from mirai.prototypes.context import (
+    MessageContextBody,
+    EventContextBody
+)
