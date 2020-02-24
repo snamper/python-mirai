@@ -51,7 +51,8 @@ class MiraiProtocol:
             message: T.Union[
                 MessageChain,
                 BaseMessageComponent,
-                T.List[BaseMessageComponent]
+                T.List[BaseMessageComponent],
+                str
             ]
     ) -> BotMessage:
         return BotMessage.parse_obj(assertOperatorSuccess(
@@ -64,7 +65,12 @@ class MiraiProtocol:
     
     async def sendGroupMessage(self,
             group: T.Union[Group, int],
-            message: MessageChain,
+            message: T.Union[
+                MessageChain,
+                BaseMessageComponent,
+                T.List[BaseMessageComponent],
+                str
+            ],
             quoteSource: T.Union[int, components.Source]=None) -> BotMessage:
         return BotMessage.parse_obj(assertOperatorSuccess(
             await fetch.http_post(f"{self.baseurl}/sendGroupMessage", {
