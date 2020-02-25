@@ -21,6 +21,7 @@ from mirai import (
 )
 from mirai.event import external
 
+from context_test import is_startwith
 
 async def main():
     authKey = "213we355gdfbaerg"
@@ -30,6 +31,7 @@ async def main():
     async with Session(f"mirai://localhost:8070/?authKey={authKey}&qq={qq}") as session:
         print(session.enabled)
 
+        """
         @session.receiver(GroupMessage)
         async def normal_handle(context):
             if isinstance(context.message, GroupMessage):
@@ -85,7 +87,15 @@ async def main():
         @session.exception_handler(UnexceptedException)
         async def exception_handle(context: UnexceptedException):
             debug(context)
-        
+        """
+        @session.receiver(GroupMessage)
+        async def normal_handle(context):
+            if is_startwith("/"):
+                await context.session.sendGroupMessage(
+                    context.message.sender.group.id,
+                    [Plain(text="嗯?你刚才以斜杠开头写了什么啊")]
+                )
+
         await session.joinMainThread()
 
 try:

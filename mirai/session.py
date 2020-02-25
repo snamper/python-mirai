@@ -190,7 +190,12 @@ class Session(MiraiProtocol):
     from .prototypes.context import (
       MessageContextBody, EventContextBody, # body
     )
-    from .context import message as MessageContext, event as EventContext
+    from .context import (
+      message as MessageContext,
+      event as EventContext,
+
+      working_type as WorkingContext
+    )
     while not exit_signal_status():
       event_context: InternalEvent
       try:
@@ -226,11 +231,13 @@ class Session(MiraiProtocol):
               if condition_result:
                 MessageContext.set(None)
                 EventContext.set(None)
+                WorkingContext.set(None)
 
                 context_body: T.Union[MessageContextBody, EventContextBody]
                 internal_context_object: \
                   T.Union[MessageContext, EventContext]
                 if hasattr(ExternalEvents, event_context.name):
+                  WorkingContext.set("Event")
                   EventLogger.info(f"[Event::{event_context.name}] is handling...")
                   internal_context_object = EventContext
                   context_body = EventContextBody(
@@ -238,6 +245,7 @@ class Session(MiraiProtocol):
                     session=self
                   )
                 elif event_context.name in MessageTypes:
+                  WorkingContext.set("Message")
                   MessageLogger.info(f"[Message::{event_context.name}] is handling...")
                   internal_context_object = MessageContext
                   context_body = MessageContextBody(
@@ -245,6 +253,7 @@ class Session(MiraiProtocol):
                     session=self
                   )
                 else:
+                  WorkingContext.set("Unknown")
                   EventLogger.warning("a unknown event is handling...")
                   context_body = event_context.body
                 internal_context_object.set(context_body) # 设置完毕.
