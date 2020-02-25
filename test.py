@@ -26,13 +26,13 @@ async def main():
     authKey = "213we355gdfbaerg"
     qq = 208924405
 
-    async with Session(f"mirai://localhost:8080/?authKey={authKey}&qq={qq}") as session:
+    print("???")
+    async with Session(f"mirai://localhost:8070/?authKey={authKey}&qq={qq}") as session:
         print(session.enabled)
 
-        @session.receiver(GroupMessage, lambda _: Direct.message)
+        @session.receiver(GroupMessage)
         async def normal_handle(context):
             if isinstance(context.message, GroupMessage):
-                context: MessageContextBody
 
                 print(f"[{context.message.sender.group.id}][{context.message.sender.id}]:", context.message.messageChain.toString())
                 #debug(context)
@@ -71,7 +71,7 @@ async def main():
                 elif context.message.messageChain.toString().startswith("/replyMe"):
                     debug(await context.session.sendGroupMessage(
                         context.message.sender.group.id,
-                        [Plain(text="reply da!")],
+                        "reply da!",
                         quoteSource=context.message.messageChain.getSource()
                     ))
                 if context.message.messageChain.hasComponent(Image):

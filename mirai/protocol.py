@@ -285,7 +285,7 @@ class MiraiProtocol:
                     for i in message
                 ] \
             if isinstance(message, (tuple, list)) else \
-                message \
+                [json.loads(components.Plain(text=message).json())] \
             if isinstance(message, str) else \
                 raiser(ValueError("invaild message(s)."))
 
@@ -309,7 +309,7 @@ class MiraiProtocol:
                     for i in message
                 ] \
             if isinstance(message, (tuple, list)) else \
-                message \
+                [json.loads(components.Plain(text=message).json())] \
             if isinstance(message, str) else \
                 raiser(ValueError("invaild message(s)."))
 
