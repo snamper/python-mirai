@@ -204,7 +204,7 @@ class Session(MiraiProtocol):
       event_context: InternalEvent
       try:
         event_context: InternalEvent = await asyncio.wait_for(queue.get(), 3)
-      except asyncio.exceptions.TimeoutError:
+      except asyncio.TimeoutError:
         if exit_signal_status():
           break
         else:
