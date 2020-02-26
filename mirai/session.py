@@ -334,10 +334,10 @@ class Session(MiraiProtocol):
     if not self.cache_options['friends']:
       self.cached_friends = {friend.id: friend for friend in await super().friendList()}
 
-  async def getGroup(self, target: int) -> T.Optional[Group]:
+  def getGroup(self, target: int) -> T.Optional[Group]:
     return self.cached_groups.get(target)
   
-  async def getFriend(self, target: int) -> T.Optional[Friend]:
+  def getFriend(self, target: int) -> T.Optional[Friend]:
     return self.cached_friends.get(target)
 
   def getEventCurrentName(self, event_value):
