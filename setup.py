@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="kuriyama",
-    version='0.1.4',
+    version='0.1.5',
     description='A framework for OICQ(QQ, made by Tencent) headless client "Mirai".',
     author='Chenwe-i-lin',
     author_email="Chenwe_i_lin@outlook.com",
