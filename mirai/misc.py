@@ -11,8 +11,8 @@ def assertOperatorSuccess(result, raise_exception=False, return_as_is=False):
         else:
             if result['code'] != 0:
                 raise {
-                    1: ValueError,
-                    2: ValueError,
+                    1: EnvironmentError,
+                    2: EnvironmentError,
                     3: EnvironmentError,
                     4: ConnectionRefusedError,
                     5: ValueError,
