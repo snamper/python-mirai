@@ -120,15 +120,9 @@ class Session(MiraiProtocol):
     return await self.enable_session()
 
   def setting_event_runtime(self):
-    async def connect():
-      with self.shared_lock:
-        await asyncio.wait([
-          self.event_runner(lambda: self.exit_signal, self.event_stacks),
-          self.message_polling(lambda: self.exit_signal, self.event_stacks)
-        ])
     def inline_warpper(loop: asyncio.AbstractEventLoop):
       asyncio.set_event_loop(loop)
-      loop.create_task(connect())
+      loop.create_task(self.get_tasks())
       loop.run_forever()
     self.async_runtime = Thread(target=inline_warpper, args=(self.another_loop,), daemon=True)
 
@@ -143,6 +137,16 @@ class Session(MiraiProtocol):
   async def __aexit__(self, exc_type, exc, tb):
     await self.close_session(ignoreError=True)
     await session.close()
+
+  async def get_tasks(self) -> T.Awaitable:
+    "用于为外部的事件循环注入 event_runner 和 message_polling"
+    async def connect():
+      with self.shared_lock:
+        await asyncio.wait([
+          self.event_runner(lambda: self.exit_signal, self.event_stacks),
+          self.message_polling(lambda: self.exit_signal, self.event_stacks)
+        ])
+    return connect()
 
   async def message_polling(self, exit_signal_status, queue, count=10):
     while not exit_signal_status():
