@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
@@ -10,9 +10,7 @@ setup(
     author='Chenwe-i-lin',
     author_email="Chenwe_i_lin@outlook.com",
     url="https://github.com/Chenwe-i-lin/python-mirai",
-    packages=[
-        "mirai"
-    ],
+    packages=find_packages(include=("mirai", "mirai.*")),
     python_requires='>=3.7',
     keywords=["oicq qq qqbot", ],
     long_description=long_description,

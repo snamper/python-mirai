@@ -12,6 +12,7 @@ twine = "*"
 aiohttp = "*"
 pydantic = "*"
 pillow = "*"
+parse = "*"
 
 [requires]
 python_version = "3.8"
