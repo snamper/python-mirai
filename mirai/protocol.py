@@ -165,15 +165,13 @@ class MiraiProtocol:
     
     async def memberInfo(self,
         group: T.Union[Group, int],
-        member: T.Union[Member, int],
-        info: MemberChangeableSetting
+        member: T.Union[Member, int]
     ):
         return MemberChangeableSetting.parse_obj(assertOperatorSuccess(
             await fetch.http_get(f"{self.baseurl}/memberInfo", {
                 "sessionKey": self.session_key,
                 "target": self.handleTargetAsGroup(group),
-                "memberId": self.handleTargetAsMember(member),
-                "info": json.loads(info.json())
+                "memberId": self.handleTargetAsMember(member)
             }
         ), raise_exception=True, return_as_is=True))
 
