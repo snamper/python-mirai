@@ -10,7 +10,15 @@ def assertOperatorSuccess(result, raise_exception=False, return_as_is=False):
             return result['code'] == 0
         else:
             if result['code'] != 0:
-                raise ValueError(f"""invaild stdin: { {
+                raise {
+                    1: ValueError,
+                    2: ValueError,
+                    3: EnvironmentError,
+                    4: ConnectionRefusedError,
+                    5: ValueError,
+                    10: PermissionError,
+                    400: RuntimeError
+                    }[result['code']](f"""invaild stdin: { {
                     1: "wrong auth key",
                     2: "unknown qq account",
                     3: "invaild session key",
