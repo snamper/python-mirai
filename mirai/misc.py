@@ -11,21 +11,21 @@ def assertOperatorSuccess(result, raise_exception=False, return_as_is=False):
         else:
             if result['code'] != 0:
                 raise {
-                    1: EnvironmentError,
-                    2: EnvironmentError,
-                    3: EnvironmentError,
-                    4: ConnectionRefusedError,
-                    5: ValueError,
-                    10: PermissionError,
-                    400: RuntimeError
+                        1: EnvironmentError,
+                        2: EnvironmentError,
+                        3: EnvironmentError,
+                        4: ConnectionRefusedError,
+                        5: ValueError,
+                        10: PermissionError,
+                        400: RuntimeError
                     }[result['code']](f"""invaild stdin: { {
-                    1: "wrong auth key",
-                    2: "unknown qq account",
-                    3: "invaild session key",
-                    4: "disabled session key",
-                    5: "unknown receiver target",
-                    10: "permission denied",
-                    400: "wrong arguments"
+                        1: "wrong auth key",
+                        2: "unknown qq account",
+                        3: "invaild session key",
+                        4: "disabled session key",
+                        5: "unknown receiver target",
+                        10: "permission denied",
+                        400: "wrong arguments"
                 }[result['code']] }""")
             else:
                 if return_as_is:

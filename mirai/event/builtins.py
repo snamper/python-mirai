@@ -3,7 +3,7 @@ from . import InternalEvent
 from mirai.session import Session
 from pydantic import BaseModel
 
-class UnexceptedException(BaseModel):
+class UnexpectedException(BaseModel):
     error: Exception
     event: InternalEvent
     session: Session

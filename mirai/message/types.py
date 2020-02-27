@@ -13,7 +13,6 @@ class MessageItemType(Enum):
 
 class FriendMessage(BaseModel):
     type: MessageItemType = "FriendMessage"
-    message_id: int
     messageChain: T.Optional[MessageChain]
     sender: Friend
 

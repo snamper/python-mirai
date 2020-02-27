@@ -2,7 +2,7 @@ import typing as T
 from urllib import parse
 from .network import fetch, session
 from .protocol import MiraiProtocol
-from .group import Group
+from .group import Group, Member
 from .friend import Friend
 from .message.types import FriendMessage, GroupMessage, MessageTypes, MessageItemType
 from .event import InternalEvent, ExternalEvent, ExternalEventTypes, ExternalEvents
@@ -12,8 +12,14 @@ from contextvars import ContextVar
 import random
 import traceback
 from mirai.logger import message as MessageLogger, event as EventLogger
-from mirai.misc import printer
+from mirai.misc import printer, raiser
+from .message import components
 import inspect
+from functools import partial
+import copy
+from .depends import Depends
+
+_T = T.TypeVar("T")
 
 class Session(MiraiProtocol):
   cache_options: T.Dict[str, bool] = {}
@@ -138,7 +144,7 @@ class Session(MiraiProtocol):
     await self.close_session(ignoreError=True)
     await session.close()
 
-  async def get_tasks(self) -> T.Awaitable:
+  def get_tasks(self) -> T.Awaitable:
     "用于为外部的事件循环注入 event_runner 和 message_polling"
     async def connect():
       with self.shared_lock:
@@ -218,12 +224,12 @@ class Session(MiraiProtocol):
               try:
                 condition_result = (not pre_condition) or (pre_condition(event_context.body))
               except Exception as e:
-                if event_context.name != "UnexceptedException":
+                if event_context.name != "UnexpectedException":
                   #print("error: by pre:", event_context.name)
                   EventLogger.error(f"a error threw by {event_context.name}'s condition.")
                   await queue.put(InternalEvent(
-                    name="UnexceptedException",
-                    body=UnexceptedException(
+                    name="UnexpectedException",
+                    body=UnexpectedException(
                       error=e,
                       event=event_context,
                       session=self
@@ -258,17 +264,25 @@ class Session(MiraiProtocol):
                   )
                 else:
                   WorkingContext.set("Unknown")
-                  EventLogger.warning("a unknown event is handling...")
-                  context_body = event_context.body
+                  EventLogger.error("a unknown event was carried")
+                  
                 internal_context_object.set(context_body) # 设置完毕.
                 try:
-                  await run_body(context_body)
+                  annotations_mapping = self.gen_annotations_mapping(event_context)
+                  translated_mapping = {
+                    k: annotations_mapping[v](k)\
+                    for k, v in run_body.__annotations__.items()\
+                      if k != "return"
+                  }
+                  await run_body(**translated_mapping)
+                except (NameError, TypeError) as e:
+                  traceback.print_exc()
                 except Exception as e:
-                  if event_context.name != "UnexceptedException":
+                  if event_context.name != "UnexpectedException":
                     EventLogger.error(f"a error(Exception::{e.__class__.__name__}) threw by {event_context.name}'s processing body.")
                     await queue.put(InternalEvent(
-                      name="UnexceptedException",
-                      body=UnexceptedException(
+                      name="UnexpectedException",
+                      body=UnexpectedException(
                         error=e,
                         event=event_context,
                         session=self
@@ -310,7 +324,7 @@ class Session(MiraiProtocol):
 
   def exception_handler(self, exception_class=None, addon_condition=None):
     return self.receiver(
-      "UnexceptedException", 
+      "UnexpectedException", 
       lambda context: \
           True \
         if not exception_class else \
@@ -321,6 +335,43 @@ class Session(MiraiProtocol):
           )
     )
 
+  def gen_event_anno(self, event_context):
+    IReturn = {}
+    for event_name, event_class in ExternalEvents.__members__.items():
+      def warpper(event_context, name, key):
+        if name != event_context.name:
+          raise ValueError("cannot look up a non-listened event.")
+        return event_context.body
+      IReturn[event_class.value] = partial(warpper, event_context, copy.copy(event_name))
+    return IReturn
+
+  def get_annotations_mapping(self, event_context):
+    return {
+      Session: lambda k: self,
+      GroupMessage: lambda k: event_context.body \
+        if event_context.name == "GroupMessage" else\
+          raiser(ValueError("you cannot setting a unbind argument.")),
+      FriendMessage: lambda k: event_context.body \
+        if event_context.name == "FriendMessage" else\
+          raiser(ValueError("you cannot setting a unbind argument.")),
+      components.Source: lambda k: event_context.body.messageChain.getSource()\
+        if event_context.name in MessageTypes else\
+          raiser(TypeError("Source is not enable in this type of event.")),
+      Group: lambda k: event_context.body.sender.group\
+        if event_context.name == "GroupMessage" else\
+          raiser(ValueError("Group is not enable in this type of event.")),
+      Friend: lambda k: event_context.body.sender\
+        if event_context.name == "FriendMessage" else\
+          raiser(ValueError("Friend is not enable in this type of event.")),
+      Member: lambda k: event_context.body.sender\
+        if event_context.name == "GroupMessage" else\
+          raiser(ValueError("Group is not enable in this type of event.")),
+      "Sender": lambda k: event_context.body.sender\
+        if event_context.name in MessageTypes else\
+          raiser(ValueError("Sender is not enable in this type of event.")),
+      "Type": lambda k: event_context.name,
+      **self.gen_event_anno(event_context)
+    }
 
   async def refreshBotGroupsCache(self) -> T.Dict[int, Group]:
     self.cached_groups = {group.id: group for group in await super().groupList()}
@@ -348,7 +399,7 @@ class Session(MiraiProtocol):
     if inspect.isclass(event_value) and issubclass(event_value, ExternalEvent): # subclass
       return event_value.__name__
     elif isinstance(event_value, ( # normal class
-      UnexceptedException,
+      UnexpectedException,
       GroupMessage,
       FriendMessage
     )):
@@ -370,5 +421,4 @@ class Session(MiraiProtocol):
   def registeredEventNames(self):
     return [self.getEventCurrentName(i) for i in self.event.keys()]
 
-
-from .event.builtins import UnexceptedException
+from .event.builtins import UnexpectedException
