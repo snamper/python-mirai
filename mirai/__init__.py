@@ -38,7 +38,7 @@ from mirai.event import (
     ExternalEvents
 )
 from mirai.event.builtins import (
-    UnexceptedException
+    UnexpectedException
 )
 from mirai.event.external import (
     BotOnlineEvent,
