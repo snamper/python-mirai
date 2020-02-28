@@ -10,7 +10,7 @@ async def main():
     async with Session(f"mirai://localhost:8070/?authKey={authKey}&qq={qq}") as session:
         @session.receiver("GroupMessage")
         async def event_gm(session: Session, message: MessageChain, group: Group):
-            if printer(message.toString().startswith("/image")):
+            if message.toString().startswith("/image"):
                 await session.sendGroupMessage(group, [
                     printer(await Image.fromFileSystem("./photo_2020-02-28_16-55-34.jpg" , "group"))
                 ])

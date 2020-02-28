@@ -11,12 +11,13 @@ from threading import Thread, Lock
 from contextvars import ContextVar
 import random
 import traceback
-from mirai.logger import message as MessageLogger, event as EventLogger
 from mirai.misc import printer, raiser
 from .message import components
 import inspect
 from functools import partial
 import copy
+from .logger import Event as EventLogger
+import json
 
 _T = T.TypeVar("T")
 
@@ -194,7 +195,7 @@ class Session(MiraiProtocol):
       return func
     return receiver_warpper
 
-  async def event_runner(self, exit_signal_status, queue: asyncio.Queue):
+  def setting_context(self, event_context):
     from .prototypes.context import (
       MessageContextBody, EventContextBody, # body
     )
@@ -204,10 +205,53 @@ class Session(MiraiProtocol):
 
       working_type as WorkingContext
     )
+    MessageContext.set(None)
+    EventContext.set(None)
+    WorkingContext.set(None)
+
+    context_body: T.Union[MessageContextBody, EventContextBody]
+    internal_context_object: \
+      T.Union[MessageContext, EventContext]
+    if hasattr(ExternalEvents, event_context.name):
+      WorkingContext.set("Event")
+      internal_context_object = EventContext
+      context_body = EventContextBody(
+        event=event_context.body,
+        session=self
+      )
+    elif event_context.name in MessageTypes:
+      WorkingContext.set("Message")
+      internal_context_object = MessageContext
+      context_body = MessageContextBody(
+        message=event_context.body,
+        session=self
+      )
+    else:
+      WorkingContext.set("Unknown")
+                    
+    internal_context_object.set(context_body) # 设置完毕.
+
+  async def throw_exception_event(self, event_context, queue, exception):
+    if event_context.name != "UnexpectedException":
+      #print("error: by pre:", event_context.name)
+      await queue.put(InternalEvent(
+        name="UnexpectedException",
+        body=UnexpectedException(
+          error=exception,
+          event=event_context,
+          session=self
+        )
+      ))
+      EventLogger.error(f"threw a exception by {event_context.name}, Exception: {exception}")
+      traceback.print_exc()
+    else:
+      EventLogger.critical(f"threw a exception by {event_context.name}, Exception: {exception}, it's a exception handler.")
+
+  async def event_runner(self, exit_signal_status, queue: asyncio.Queue):
     while not exit_signal_status():
       event_context: InternalEvent
       try:
-        event_context: InternalEvent = await asyncio.wait_for(queue.get(), 3)
+        event_context: T.NamedTuple[InternalEvent] = await asyncio.wait_for(queue.get(), 3)
       except asyncio.TimeoutError:
         if exit_signal_status():
           break
@@ -222,73 +266,23 @@ class Session(MiraiProtocol):
               try:
                 condition_result = (not pre_condition) or (pre_condition(event_context.body))
               except Exception as e:
-                if event_context.name != "UnexpectedException":
-                  #print("error: by pre:", event_context.name)
-                  EventLogger.error(f"a error threw by {event_context.name}'s condition.")
-                  await queue.put(InternalEvent(
-                    name="UnexpectedException",
-                    body=UnexpectedException(
-                      error=e,
-                      event=event_context,
-                      session=self
-                    )
-                  ))
-                else:
-                  traceback.print_exc()
+                self.throw_exception_event(event_context, queue, e)
                 continue
               if condition_result:
-                MessageContext.set(None)
-                EventContext.set(None)
-                WorkingContext.set(None)
+                annotations_mapping = self.get_annotations_mapping()
+                translated_mapping = {
+                  k: annotations_mapping[v](event_context)\
+                  for k, v in run_body.__annotations__.items()\
+                    if k != "return" # 以免撞到 return type
+                }
 
-                context_body: T.Union[MessageContextBody, EventContextBody]
-                internal_context_object: \
-                  T.Union[MessageContext, EventContext]
-                if hasattr(ExternalEvents, event_context.name):
-                  WorkingContext.set("Event")
-                  EventLogger.info(f"[Event::{event_context.name}] is handling...")
-                  internal_context_object = EventContext
-                  context_body = EventContextBody(
-                    event=event_context.body,
-                    session=self
-                  )
-                elif event_context.name in MessageTypes:
-                  WorkingContext.set("Message")
-                  MessageLogger.info(f"[Message::{event_context.name}] is handling...")
-                  internal_context_object = MessageContext
-                  context_body = MessageContextBody(
-                    message=event_context.body,
-                    session=self
-                  )
-                else:
-                  WorkingContext.set("Unknown")
-                  EventLogger.error("a unknown event was carried")
-                  
-                internal_context_object.set(context_body) # 设置完毕.
                 try:
-                  annotations_mapping = self.get_annotations_mapping()
-                  translated_mapping = {
-                    k: annotations_mapping[v](event_context)\
-                    for k, v in run_body.__annotations__.items()\
-                      if k != "return"
-                  }
                   await run_body(**translated_mapping)
                 except (NameError, TypeError) as e:
+                  EventLogger.error(f"threw a exception by {event_context.name}, it's about Annotations Checker, please report to developer.")
                   traceback.print_exc()
                 except Exception as e:
-                  if event_context.name != "UnexpectedException":
-                    EventLogger.error(f"a error(Exception::{e.__class__.__name__}) threw by {event_context.name}'s processing body.")
-                    await queue.put(InternalEvent(
-                      name="UnexpectedException",
-                      body=UnexpectedException(
-                        error=e,
-                        event=event_context,
-                        session=self
-                      )
-                    ))
-                    traceback.print_exc()
-                  else:
-                    traceback.print_exc()
+                  await self.throw_exception_event(event_context, queue, e)
 
   async def close_session(self, ignoreError=False):
     if self.enabled:
