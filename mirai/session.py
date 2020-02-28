@@ -267,9 +267,9 @@ class Session(MiraiProtocol):
                   
                 internal_context_object.set(context_body) # 设置完毕.
                 try:
-                  annotations_mapping = self.gen_annotations_mapping(event_context)
+                  annotations_mapping = self.get_annotations_mapping()
                   translated_mapping = {
-                    k: annotations_mapping[v](k)\
+                    k: annotations_mapping[v](event_context)\
                     for k, v in run_body.__annotations__.items()\
                       if k != "return"
                   }
@@ -315,11 +315,58 @@ class Session(MiraiProtocol):
       self.another_loop.call_soon_threadsafe(self.another_loop.stop)
       self.async_runtime.join()
 
+  def getRestraintMapping(self):
+    from .message import MessageChain
+    def warpper(name, event_context):
+      return name == event_context.name
+    return {
+      Session: lambda k: True,
+      GroupMessage: lambda k: k.name == "GroupMessage",
+      FriendMessage: lambda k: k.name =="FriendMessage",
+      MessageChain: lambda k: k.name in MessageTypes,
+      components.Source: lambda k: k.name in MessageTypes,
+      Group: lambda k: k.name == "GroupMessage",
+      Friend: lambda k: k.name =="FriendMessage",
+      Member: lambda k: k.name == "GroupMessage",
+      "Sender": lambda k: k.name in MessageTypes,
+      "Type": lambda k: k.name,
+      **({
+        event_class.value: partial(warpper, copy.copy(event_name))
+        for event_name, event_class in \
+          ExternalEvents.__members__.items()
+      })
+    }
+
+  def checkEventBodyAnnotations(self):
+    event_bodys: T.Dict[T.Callable, T.List[str]] = {}
+    for event_name in self.event:
+      event_body_list = sum([list(i.values()) for i in self.event[event_name]], [])
+      for i in event_body_list:
+        if not event_bodys.get(i):
+          event_bodys[i] = [event_name]
+        else:
+          event_bodys[i].append(event_name)
+    
+    restraint_mapping = self.getRestraintMapping()
+    for func in event_bodys:
+      for func_item in func.__annotations__.values():
+        for event_name in event_bodys[func]:
+          try:
+            if not restraint_mapping[func_item](type("checkMockType", (object,), {
+              "name": event_name
+            })()):
+              raise ValueError(f"error in annotations checker: {func}.{func_item}: {event_name}")
+          except KeyError:
+            raise ValueError(f"error in annotations checker: {func}.{func_item} is invaild.")
+          except ValueError:
+            raise
+
   async def joinMainThread(self):
-    while self.shared_lock.locked():
+    self.checkEventBodyAnnotations()
+    while self.shared_lock:
       await asyncio.sleep(0.01)
     else:
-      return True
+      return
 
   def exception_handler(self, exception_class=None, addon_condition=None):
     return self.receiver(
@@ -334,42 +381,46 @@ class Session(MiraiProtocol):
           )
     )
 
-  def gen_event_anno(self, event_context):
+  def gen_event_anno(self):
     IReturn = {}
     for event_name, event_class in ExternalEvents.__members__.items():
-      def warpper(event_context, name, key):
+      def warpper(name, event_context):
         if name != event_context.name:
           raise ValueError("cannot look up a non-listened event.")
         return event_context.body
-      IReturn[event_class.value] = partial(warpper, event_context, copy.copy(event_name))
+      IReturn[event_class.value] = partial(warpper, copy.copy(event_name))
     return IReturn
 
-  def get_annotations_mapping(self, event_context):
+  def get_annotations_mapping(self):
+    from .message import MessageChain
     return {
       Session: lambda k: self,
-      GroupMessage: lambda k: event_context.body \
-        if event_context.name == "GroupMessage" else\
+      GroupMessage: lambda k: k.body \
+        if k.name == "GroupMessage" else\
           raiser(ValueError("you cannot setting a unbind argument.")),
-      FriendMessage: lambda k: event_context.body \
-        if event_context.name == "FriendMessage" else\
+      FriendMessage: lambda k: k.body \
+        if k.name == "FriendMessage" else\
           raiser(ValueError("you cannot setting a unbind argument.")),
-      components.Source: lambda k: event_context.body.messageChain.getSource()\
-        if event_context.name in MessageTypes else\
+      MessageChain: lambda k: k.body.messageChain\
+        if k.name in MessageTypes else\
+          raiser(ValueError("MessageChain is not enable in this type of event.")),
+      components.Source: lambda k: k.body.messageChain.getSource()\
+        if k.name in MessageTypes else\
           raiser(TypeError("Source is not enable in this type of event.")),
-      Group: lambda k: event_context.body.sender.group\
-        if event_context.name == "GroupMessage" else\
+      Group: lambda k: k.body.sender.group\
+        if k.name == "GroupMessage" else\
           raiser(ValueError("Group is not enable in this type of event.")),
-      Friend: lambda k: event_context.body.sender\
-        if event_context.name == "FriendMessage" else\
+      Friend: lambda k: k.body.sender\
+        if k.name == "FriendMessage" else\
           raiser(ValueError("Friend is not enable in this type of event.")),
-      Member: lambda k: event_context.body.sender\
-        if event_context.name == "GroupMessage" else\
+      Member: lambda k: k.body.sender\
+        if k.name == "GroupMessage" else\
           raiser(ValueError("Group is not enable in this type of event.")),
-      "Sender": lambda k: event_context.body.sender\
-        if event_context.name in MessageTypes else\
+      "Sender": lambda k: k.body.sender\
+        if k.name in MessageTypes else\
           raiser(ValueError("Sender is not enable in this type of event.")),
-      "Type": lambda k: event_context.name,
-      **self.gen_event_anno(event_context)
+      "Type": lambda k: k.name,
+      **self.gen_event_anno()
     }
 
   async def refreshBotGroupsCache(self) -> T.Dict[int, Group]:
