@@ -13,6 +13,7 @@ aiohttp = "*"
 pydantic = "*"
 pillow = "*"
 parse = "*"
+eliot = "*"
 
 [requires]
 python_version = "3.8"

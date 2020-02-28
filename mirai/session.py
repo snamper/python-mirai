@@ -102,9 +102,9 @@ class Session(MiraiProtocol):
         raise ValueError('invaild args: unknown response')
     
     if self.cache_options['groups']:
-      self.cached_groups = {group.id: group for group in await super().groupList()}
+      await self.cacheBotGroups()
     if self.cache_options['friends']:
-      self.cached_friends = {friend.id: friend for friend in await super().friendList()}
+      await self.cacheBotFriends()
 
     self.enabled = True
     return self
@@ -135,23 +135,22 @@ class Session(MiraiProtocol):
     self.async_runtime.start()
 
   async def __aenter__(self) -> "Session":
+    await self.enable_session()
     self.setting_event_runtime()
     self.start_event_runtime()
-    return await self.enable_session()
+    return self
 
   async def __aexit__(self, exc_type, exc, tb):
     await self.close_session(ignoreError=True)
     await session.close()
 
-  def get_tasks(self) -> T.Awaitable:
+  async def get_tasks(self):
     "用于为外部的事件循环注入 event_runner 和 message_polling"
-    async def connect():
-      with self.shared_lock:
-        await asyncio.wait([
-          self.event_runner(lambda: self.exit_signal, self.event_stacks),
-          self.message_polling(lambda: self.exit_signal, self.event_stacks)
-        ])
-    return connect()
+    with self.shared_lock:
+      await asyncio.wait([
+        self.event_runner(lambda: self.exit_signal, self.event_stacks),
+        self.message_polling(lambda: self.exit_signal, self.event_stacks)
+      ])
 
   async def message_polling(self, exit_signal_status, queue, count=10):
     while not exit_signal_status():
