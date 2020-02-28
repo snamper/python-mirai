@@ -17,7 +17,6 @@ from .message import components
 import inspect
 from functools import partial
 import copy
-from .depends import Depends
 
 _T = T.TypeVar("T")
 
