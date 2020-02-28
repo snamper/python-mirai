@@ -1,5 +1,5 @@
 import asyncio
-from mirai import Session, Plain, Friend, BotMuteEvent
+from mirai import Session, Plain, Friend, BotMuteEvent, BotUnmuteEvent, Group, Member
 from devtools import debug
 
 authKey = "213we355gdfbaerg"
@@ -7,7 +7,6 @@ qq = 208924405
 
 async def main():
     async with Session(f"mirai://localhost:8070/?authKey={authKey}&qq={qq}") as session:
-        print(session.enabled)
         @session.receiver("FriendMessage")
         async def event_friendmessage(session: Session, sender: Friend):
             await session.sendFriendMessage(
@@ -19,6 +18,7 @@ async def main():
         async def event_BotMuteEvent(event: BotMuteEvent):
             debug(event)
 
+        print(session.enabled)
         await session.joinMainThread()
 
 try:
