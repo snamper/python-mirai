@@ -11,11 +11,22 @@ async def main():
         @session.receiver("GroupMessage")
         async def event_gm(session: Session, message: MessageChain, group: Group):
             if message.toString().startswith("/image"):
-                await session.sendGroupMessage(group, [
-                    printer(await Image.fromFileSystem("./photo_2020-02-28_16-55-34.jpg" , "group"))
-                ])
                 print("meow!")
-
+                await session.sendGroupMessage(group, [
+                    #await Image.fromFileSystem("./photo_2020-02-28_16-55-34.jpg" , "group"),
+                    Plain(text="??")
+                ])
+            
+        @session.receiver("FriendMessage")
+        async def event_gm(session: Session, message: MessageChain, friend: Friend):
+            if message.toString().startswith("/image"):
+                print("meow!")
+                await asyncio.sleep(10)
+                await session.sendFriendMessage(friend, [
+                    #await Image.fromFileSystem("./photo_2020-02-28_16-55-34.jpg" , "friend"),
+                    Plain(text="??")
+                ])
+                
         print(session.enabled)
         await session.joinMainThread()
 

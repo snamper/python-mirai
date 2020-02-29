@@ -2,7 +2,7 @@ import json
 import mimetypes
 import typing as T
 from pathlib import Path
-import eliot
+from .logger import Network
 
 import aiohttp
 
@@ -16,8 +16,10 @@ class fetch:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=data_map) as response:
                 if response.status != 200:
+                    Network.error(f"requested {url=}, by {data_map=}, and {response.status=}")
                     raise NetworkError(f"method=POST, url={url}, data={data_map}, status={response.status}")
                 data = await response.text(encoding="utf-8")
+                Network.debug(f"requested {url=}, by {data_map=}, and {response.status=}, {data=}")
         return json.loads(data)
 
     @staticmethod
@@ -25,6 +27,7 @@ class fetch:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, params=params) as response:
                 data = await response.text(encoding="utf-8")
+                Network.debug(f"requested {url=}, by {params=}, and {response.status=}, {data=}")
         return json.loads(data)
 
     @staticmethod
@@ -37,4 +40,5 @@ class fetch:
             upload_data.add_fields(item)
         async with aiohttp.ClientSession() as session:
             async with session.post(url, data=upload_data) as response:
+                Network.debug(f"requested {url=}, by {file.name=}, and {response.status=}, {addon_dict=}")
                 return await response.text("utf-8")

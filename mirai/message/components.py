@@ -45,13 +45,13 @@ class At(GenericModel, BaseMessageComponent):
     target: int
 
     def toString(self):
-        return f"[At::target={self.target},group={message.get().message.sender.group.id},sender={message.get().message.sender.id}]"
+        return f"[At::target={self.target}]"
 
 class AtAll(BaseMessageComponent):
     type: MessageComponentTypes = "AtAll"
 
     def toString(self):
-        return f"[AtAll::group={message.get().message.sender.group.id},sender={message.get().message.sender.id}]"
+        return f"[AtAll]"
 
 class Face(BaseMessageComponent):
     type: MessageComponentTypes = "Face"

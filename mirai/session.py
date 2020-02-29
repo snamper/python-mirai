@@ -247,6 +247,15 @@ class Session(MiraiProtocol):
     else:
       EventLogger.critical(f"threw a exception by {event_context.name}, Exception: {exception}, it's a exception handler.")
 
+  def argument_compiler(self, annotations, event_context):
+    annotations_mapping = self.get_annotations_mapping()
+    translated_mapping = {
+      k: annotations_mapping[v](event_context)\
+      for k, v in annotations.items()\
+        if k != "return" # 以免撞到 return type
+    }
+    return translated_mapping
+      
   async def event_runner(self, exit_signal_status, queue: asyncio.Queue):
     while not exit_signal_status():
       event_context: InternalEvent
@@ -269,19 +278,20 @@ class Session(MiraiProtocol):
                 self.throw_exception_event(event_context, queue, e)
                 continue
               if condition_result:
-                annotations_mapping = self.get_annotations_mapping()
-                translated_mapping = {
-                  k: annotations_mapping[v](event_context)\
-                  for k, v in run_body.__annotations__.items()\
-                    if k != "return" # 以免撞到 return type
-                }
+                EventLogger.info(f"handling a event: {event_context}")
+                self.setting_context(event_context)
+                translated_mapping = self.argument_compiler(
+                  run_body.__annotations__,
+                  event_context
+                )
 
                 try:
-                  await run_body(**translated_mapping)
+                  asyncio.create_task(run_body(**translated_mapping))
                 except (NameError, TypeError) as e:
                   EventLogger.error(f"threw a exception by {event_context.name}, it's about Annotations Checker, please report to developer.")
                   traceback.print_exc()
                 except Exception as e:
+                  EventLogger.error(f"threw a exception by {event_context.name}, and it's {e}")
                   await self.throw_exception_event(event_context, queue, e)
 
   async def close_session(self, ignoreError=False):
