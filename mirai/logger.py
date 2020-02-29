@@ -1,13 +1,12 @@
-import logging
-
-logging.basicConfig(
-    format="[time::%(asctime)s][thread::%(thread)d]<%(levelname)s>: %(message)s",
-    level=20
+from logbook import Logger, StreamHandler
+from logbook import (
+    INFO,
+    DEBUG
 )
+import sys
 
-network = logging.getLogger("network")
-event = logging.getLogger("event")
-message = logging.getLogger("message")
-normal = logging.getLogger("normal")
+StreamHandler(sys.stdout, level=INFO).push_application()
 
-normal.debug("logger init finished.")
+Event = Logger('Event', level=INFO)
+Network = Logger("Network", level=DEBUG)
+Session = Logger("Session", level=INFO)

@@ -12,6 +12,7 @@ from io import BytesIO
 from PIL import Image as PILImage
 from pathlib import Path
 import re
+from mirai.context import Direct
 
 __all__ = [
     "Plain",
@@ -44,13 +45,13 @@ class At(GenericModel, BaseMessageComponent):
     target: int
 
     def toString(self):
-        return f"[At::target={self.target},group={message.get().message.sender.group.id},sender={message.get().message.sender.id}]"
+        return f"[At::target={self.target}]"
 
 class AtAll(BaseMessageComponent):
     type: MessageComponentTypes = "AtAll"
 
     def toString(self):
-        return f"[AtAll::group={message.get().message.sender.group.id},sender={message.get().message.sender.id}]"
+        return f"[AtAll]"
 
 class Face(BaseMessageComponent):
     type: MessageComponentTypes = "Face"
@@ -97,9 +98,12 @@ class Image(BaseMessageComponent):
     @classmethod
     async def fromFileSystem(cls, 
             path: T.Union[Path, str],
-            miraiSession: "MiraiProtocol",
             imageType: ImageType
         ) -> "Image":
+        if Direct.WorkingType == "Message":
+            miraiSession = Direct.Message.session
+        else:
+            miraiSession = Direct.Event.session
         return await miraiSession.uploadImage(imageType, path)
 
 class Unknown(BaseMessageComponent):

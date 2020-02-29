@@ -306,7 +306,7 @@ class MiraiProtocol:
                         # 对Image特殊处理
                         if type(i) != components.Image else \
                             {"type": "Image", "imageId": i.asFriendImage()} \
-                    for i in message
+                    for i in message if i
                 ] \
             if isinstance(message, (tuple, list)) else \
                 [json.loads(components.Plain(text=message).json())] \

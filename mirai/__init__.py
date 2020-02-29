@@ -1,14 +1,9 @@
+import mirai.logger
 from mirai.misc import (
     ImageType
 )
 from mirai.face import QQFaces
 from mirai.exceptions import NetworkError
-from mirai.logger import (
-    network,
-    event,
-    message,
-    normal
-)
 
 from mirai.context import (
     Direct

@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="kuriyama",
-    version='0.1.10',
+    version='0.1.11',
     description='A framework for OICQ(QQ, made by Tencent) headless client "Mirai".',
     author='Chenwe-i-lin',
     author_email="Chenwe_i_lin@outlook.com",
@@ -13,6 +13,12 @@ setup(
     packages=find_packages(include=("mirai", "mirai.*")),
     python_requires='>=3.7',
     keywords=["oicq qq qqbot", ],
+    install_requires=[
+        "aiohttp",
+        "pydantic",
+        "Pillow",
+        "Logbook",
+    ],
     long_description=long_description,
     long_description_content_type="text/markdown",
     classifiers = [
