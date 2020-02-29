@@ -13,7 +13,6 @@ eliot-tree = "*"
 aiohttp = "*"
 pydantic = "*"
 pillow = "*"
-parse = "*"
 logbook = "*"
 
 [requires]
