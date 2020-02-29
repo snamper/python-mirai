@@ -13,6 +13,12 @@ setup(
     packages=find_packages(include=("mirai", "mirai.*")),
     python_requires='>=3.7',
     keywords=["oicq qq qqbot", ],
+    install_requires=[
+        "aiohttp",
+        "pydantic",
+        "Pillow",
+        "Logbook",
+    ],
     long_description=long_description,
     long_description_content_type="text/markdown",
     classifiers = [
