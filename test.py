@@ -13,7 +13,7 @@ async def main():
             if message.toString().startswith("/image"):
                 print("meow!")
                 await session.sendGroupMessage(group, [
-                    #await Image.fromFileSystem("./photo_2020-02-28_16-55-34.jpg" , "group"),
+                    await Image.fromFileSystem("./00C49FCD-D8D9-4966-B2FC-F18F6220485E.jpg" , "group"),
                     Plain(text="??")
                 ])
             
@@ -27,7 +27,6 @@ async def main():
                     Plain(text="??")
                 ])
                 
-        print(session.enabled)
         await session.joinMainThread()
 
 try:

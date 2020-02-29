@@ -1,7 +1,12 @@
 from logbook import Logger, StreamHandler
+from logbook import (
+    INFO,
+    DEBUG
+)
 import sys
 
-StreamHandler(sys.stdout, level=20).push_application()
+StreamHandler(sys.stdout, level=INFO).push_application()
 
-Event = Logger('Event', level=20)
-Network = Logger("Network", level=10)
+Event = Logger('Event', level=INFO)
+Network = Logger("Network", level=DEBUG)
+Session = Logger("Session", level=INFO)

@@ -16,7 +16,7 @@ from .message import components
 import inspect
 from functools import partial
 import copy
-from .logger import Event as EventLogger
+from .logger import Event as EventLogger, Session as SessionLogger
 import json
 
 _T = T.TypeVar("T")
@@ -270,7 +270,7 @@ class Session(MiraiProtocol):
       if event_context.name in self.registeredEventNames:
         for event in list(self.event.values())\
               [self.registeredEventNames.index(event_context.name)]:
-          if event: # 判断是否有注册.
+          if event: # 判断是否是 []/{}
             for pre_condition, run_body in event.items():
               try:
                 condition_result = (not pre_condition) or (pre_condition(event_context.body))
@@ -278,7 +278,7 @@ class Session(MiraiProtocol):
                 self.throw_exception_event(event_context, queue, e)
                 continue
               if condition_result:
-                EventLogger.info(f"handling a event: {event_context}")
+                EventLogger.info(f"handling a event: {event_context.name}")
                 self.setting_context(event_context)
                 translated_mapping = self.argument_compiler(
                   run_body.__annotations__,
@@ -366,6 +366,7 @@ class Session(MiraiProtocol):
 
   async def joinMainThread(self):
     self.checkEventBodyAnnotations()
+    SessionLogger.info("session ready.")
     while self.shared_lock:
       await asyncio.sleep(0.01)
     else:
