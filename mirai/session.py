@@ -186,14 +186,24 @@ class Session(MiraiProtocol):
   def receiver(self, event_name, 
       addon_condition: T.Optional[
         T.Callable[[T.Union[FriendMessage, GroupMessage]], bool]
-      ] = None):
+      ] = None,
+      dependencies: T.List[Depend] = []):
     def receiver_warpper(
       func: T.Callable[[T.Union[FriendMessage, GroupMessage], "Session"], T.Awaitable[T.Any]]
     ):
+      if not inspect.iscoroutinefunction(func):
+        raise TypeError("event body must be a coroutine function.")
+        
       if event_name not in self.event:
-        self.event[event_name] = [{addon_condition: func}]
+        self.event[event_name] = [{addon_condition: {
+          "func": func,
+          "dependencies": dependencies
+        }}]
       else:
-        self.event[event_name].append({addon_condition: func})
+        self.event[event_name].append({addon_condition: {
+          "func": func,
+          "dependencies": dependencies
+        }})
       return func
     return receiver_warpper
 
@@ -252,20 +262,27 @@ class Session(MiraiProtocol):
     }
 
   async def main_entrance(self, run_body, event_context, queue):
+    if isinstance(run_body, dict):
+      callable_target = run_body['func']
+      for depend in run_body['dependencies']:
+        await self.main_entrance(depend.func, event_context, queue)
+    else:
+      callable_target = run_body
+
     translated_mapping = {
       **(await self.argument_compiler(
-        run_body,
+        callable_target,
         event_context
       )),
       **(await self.signature_checkout(
-        run_body,
+        callable_target,
         event_context,
         queue
       ))
     }
 
     try:
-      return await run_body(**translated_mapping)
+      return await callable_target(**translated_mapping)
     except (NameError, TypeError) as e:
       EventLogger.error(f"threw a exception by {event_context.name}, it's about Annotations Checker, please report to developer.")
       traceback.print_exc()
@@ -353,10 +370,10 @@ class Session(MiraiProtocol):
     for event_name in self.event:
       event_body_list = sum([list(i.values()) for i in self.event[event_name]], [])
       for i in event_body_list:
-        if not event_bodys.get(i):
-          event_bodys[i] = [event_name]
+        if not event_bodys.get(i['func']):
+          event_bodys[i['func']] = [event_name]
         else:
-          event_bodys[i].append(event_name)
+          event_bodys[i['func']].append(event_name)
     
     restraint_mapping = self.getRestraintMapping()
     for func in event_bodys:
@@ -374,6 +391,14 @@ class Session(MiraiProtocol):
             raise ValueError(f"error in annotations checker: {func}.{func_item} is invaild.")
           except ValueError:
             raise
+
+  def checkEventDependencies(self):
+    for event_name, event_bodys in self.event.items():
+      for i in event_bodys:
+        value = list(i.values())[0]
+        for depend in value['dependencies']:
+          if type(depend) != Depend:
+            raise TypeError(f"error in dependencies checker: {value['func']}: {event_name}")
 
   async def joinMainThread(self):
     self.checkEventBodyAnnotations()
@@ -408,15 +433,6 @@ class Session(MiraiProtocol):
 
   def get_annotations_mapping(self):
     from .event.message import MessageChain
-    """
-    async def special_depend(event_context, depend_body: Depend):
-      return await depend_body.func(
-        **await self.argument_compiler(
-          depend_body.func.__annotations__, event_context
-        )
-      )
-    """
-
     return {
       Session: lambda k: self,
       GroupMessage: lambda k: k.body \

@@ -15,9 +15,13 @@ async def test(session: Session, q = Depend(test2)):
 
 async def main():
     async with Session(f"mirai://localhost:8070/?authKey={authKey}&qq={qq}") as session:
-        @session.receiver("GroupMessage")
-        async def event_gm(session: Session, message: MessageChain, group: Group, r = Depend(test)):
-            print("meow!", r)
+        @session.receiver("GroupMessage",
+            dependencies=[
+                Depend(test)
+            ]
+        )
+        async def event_gm(session: Session, message: MessageChain, group: Group):
+            print("meow!")
             if message.toString().startswith("/image"):
                 await session.sendGroupMessage(group, [
                     await Image.fromFileSystem("./00C49FCD-D8D9-4966-B2FC-F18F6220485E.jpg" , "group"),
