@@ -4,7 +4,7 @@ from .network import fetch, session
 from .protocol import MiraiProtocol
 from .group import Group, Member
 from .friend import Friend
-from .message.types import FriendMessage, GroupMessage, MessageTypes, MessageItemType
+from .event.message.types import FriendMessage, GroupMessage, MessageTypes, MessageItemType
 from .event import InternalEvent, ExternalEvent, ExternalEventTypes, ExternalEvents
 import asyncio
 from threading import Thread, Lock
@@ -12,7 +12,8 @@ from contextvars import ContextVar
 import random
 import traceback
 from mirai.misc import printer, raiser
-from .message import components
+from .event.message import components
+from .exceptions import EventCancelled
 import inspect
 from functools import partial
 import copy
@@ -253,6 +254,9 @@ class Session(MiraiProtocol):
                 except (NameError, TypeError) as e:
                   EventLogger.error(f"threw a exception by {event_context.name}, it's about Annotations Checker, please report to developer.")
                   traceback.print_exc()
+                except EventCancelled:
+                  EventLogger.info(f"a event was cancelled: {event_context.name}")
+                  break
                 except Exception as e:
                   EventLogger.error(f"threw a exception by {event_context.name}, and it's {e}")
                   await self.throw_exception_event(event_context, queue, e)
@@ -282,7 +286,7 @@ class Session(MiraiProtocol):
       self.async_runtime.join()
 
   def getRestraintMapping(self):
-    from .message import MessageChain
+    from .event.message import MessageChain
     def warpper(name, event_context):
       return name == event_context.name
     return {
@@ -359,7 +363,7 @@ class Session(MiraiProtocol):
     return IReturn
 
   def get_annotations_mapping(self):
-    from .message import MessageChain
+    from .event.message import MessageChain
     return {
       Session: lambda k: self,
       GroupMessage: lambda k: k.body \

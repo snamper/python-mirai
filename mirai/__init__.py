@@ -5,8 +5,8 @@ from mirai.misc import (
 from mirai.face import QQFaces
 from mirai.exceptions import NetworkError
 
-import mirai.message.base
-from mirai.message.components import (
+import mirai.event.message.base
+from mirai.event.message.components import (
     At,
     Plain,
     Source,
@@ -14,10 +14,10 @@ from mirai.message.components import (
     Face,
     Image
 )
-from mirai.message.chain import (
+from mirai.event.message.chain import (
     MessageChain
 )
-from mirai.message.types import (
+from mirai.event.message.types import (
     GroupMessage,
     FriendMessage,
     BotMessage

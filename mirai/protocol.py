@@ -5,16 +5,16 @@ from pathlib import Path
 from uuid import UUID
 import json
 
-from mirai.message.types import FriendMessage, GroupMessage, BotMessage, MessageTypes
+from mirai.event.message.types import FriendMessage, GroupMessage, BotMessage, MessageTypes
 
 from mirai.event import ExternalEvent, ExternalEvents
 from mirai.friend import Friend
 from mirai.group import Group, GroupSetting, Member, MemberChangeableSetting
-from mirai.message.chain import MessageChain
+from mirai.event.message.chain import MessageChain
 from mirai.misc import ImageRegex, ImageType, assertOperatorSuccess, raiser, printer, getMatchedString
 from mirai.network import fetch
-from mirai.message.base import BaseMessageComponent
-from mirai.message import components
+from mirai.event.message.base import BaseMessageComponent
+from mirai.event.message import components
 import threading
 
 class MiraiProtocol:
