@@ -12,7 +12,6 @@ from io import BytesIO
 from PIL import Image as PILImage
 from pathlib import Path
 import re
-from mirai.context import Direct
 
 __all__ = [
     "Plain",
@@ -98,13 +97,10 @@ class Image(BaseMessageComponent):
     @classmethod
     async def fromFileSystem(cls, 
             path: T.Union[Path, str],
+            session,
             imageType: ImageType
         ) -> "Image":
-        if Direct.WorkingType == "Message":
-            miraiSession = Direct.Message.session
-        else:
-            miraiSession = Direct.Event.session
-        return await miraiSession.uploadImage(imageType, path)
+        return await session.uploadImage(imageType, path)
 
 class Unknown(BaseMessageComponent):
     type: MessageComponentTypes = "Unknown"

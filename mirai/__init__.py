@@ -5,10 +5,6 @@ from mirai.misc import (
 from mirai.face import QQFaces
 from mirai.exceptions import NetworkError
 
-from mirai.context import (
-    Direct
-)
-
 import mirai.message.base
 from mirai.message.components import (
     At,
@@ -81,11 +77,4 @@ import mirai.network
 import mirai.protocol
 from mirai.session import (
     Session
-)
-
-
-
-from mirai.prototypes.context import (
-    MessageContextBody,
-    EventContextBody
 )

@@ -195,42 +195,6 @@ class Session(MiraiProtocol):
       return func
     return receiver_warpper
 
-  def setting_context(self, event_context):
-    from .prototypes.context import (
-      MessageContextBody, EventContextBody, # body
-    )
-    from .context import (
-      message as MessageContext,
-      event as EventContext,
-
-      working_type as WorkingContext
-    )
-    MessageContext.set(None)
-    EventContext.set(None)
-    WorkingContext.set(None)
-
-    context_body: T.Union[MessageContextBody, EventContextBody]
-    internal_context_object: \
-      T.Union[MessageContext, EventContext]
-    if hasattr(ExternalEvents, event_context.name):
-      WorkingContext.set("Event")
-      internal_context_object = EventContext
-      context_body = EventContextBody(
-        event=event_context.body,
-        session=self
-      )
-    elif event_context.name in MessageTypes:
-      WorkingContext.set("Message")
-      internal_context_object = MessageContext
-      context_body = MessageContextBody(
-        message=event_context.body,
-        session=self
-      )
-    else:
-      WorkingContext.set("Unknown")
-                    
-    internal_context_object.set(context_body) # 设置完毕.
-
   async def throw_exception_event(self, event_context, queue, exception):
     if event_context.name != "UnexpectedException":
       #print("error: by pre:", event_context.name)
@@ -279,7 +243,6 @@ class Session(MiraiProtocol):
                 continue
               if condition_result:
                 EventLogger.info(f"handling a event: {event_context.name}")
-                self.setting_context(event_context)
                 translated_mapping = self.argument_compiler(
                   run_body.__annotations__,
                   event_context
