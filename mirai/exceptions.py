@@ -3,6 +3,3 @@ class NetworkError(Exception):
 
 class UnknownTarget(Exception):
     pass
-
-class EventCancelled(Exception):
-    pass

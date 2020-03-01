@@ -2,7 +2,7 @@ import typing as T
 from pydantic import BaseModel
 
 from .base import BaseMessageComponent
-from ..misc import raiser, printer
+from mirai.misc import raiser, printer
 from .components import Source
 
 class MessageChain(BaseModel):

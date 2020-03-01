@@ -3,7 +3,7 @@ import typing as T
 from uuid import UUID
 from mirai.misc import findKey, printer, ImageRegex, getMatchedString, randomRangedNumberString as rd
 from mirai.face import QQFaces
-from mirai.message.base import BaseMessageComponent, MessageComponentTypes
+from mirai.event.message.base import BaseMessageComponent, MessageComponentTypes
 from pydantic import Field, validator, HttpUrl
 from pydantic.generics import GenericModel
 from mirai.network import fetch, session

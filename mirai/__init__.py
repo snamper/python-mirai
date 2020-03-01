@@ -4,6 +4,7 @@ from mirai.misc import (
 )
 from mirai.face import QQFaces
 from mirai.exceptions import NetworkError
+from mirai.depend import Depend
 
 import mirai.event.message.base
 from mirai.event.message.components import (
@@ -25,8 +26,7 @@ from mirai.event.message.types import (
 
 from mirai.event import (
     InternalEvent,
-    ExternalEvent,
-    ExternalEvents
+    ExternalEvent
 )
 from mirai.event.builtins import (
     UnexpectedException
@@ -61,6 +61,7 @@ from mirai.event.external import (
     MemberMuteEvent,
     MemberUnmuteEvent
 )
+from mirai.event.external.enums import ExternalEvents
 
 from mirai.friend import (
     Friend

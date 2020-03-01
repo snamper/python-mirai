@@ -5,7 +5,8 @@ from .protocol import MiraiProtocol
 from .group import Group, Member
 from .friend import Friend
 from .event.message.types import FriendMessage, GroupMessage, MessageTypes, MessageItemType
-from .event import InternalEvent, ExternalEvent, ExternalEventTypes, ExternalEvents
+from .event import InternalEvent, ExternalEvent, ExternalEventTypes
+from .event.external.enums import ExternalEvents
 import asyncio
 from threading import Thread, Lock
 from contextvars import ContextVar
@@ -13,12 +14,12 @@ import random
 import traceback
 from mirai.misc import printer, raiser
 from .event.message import components
-from .exceptions import EventCancelled
 import inspect
 from functools import partial
 import copy
 from .logger import Event as EventLogger, Session as SessionLogger
 import json
+from .depend import Depend
 
 _T = T.TypeVar("T")
 
@@ -197,6 +198,7 @@ class Session(MiraiProtocol):
     return receiver_warpper
 
   async def throw_exception_event(self, event_context, queue, exception):
+    from .event.builtins import UnexpectedException
     if event_context.name != "UnexpectedException":
       #print("error: by pre:", event_context.name)
       await queue.put(InternalEvent(
@@ -212,14 +214,64 @@ class Session(MiraiProtocol):
     else:
       EventLogger.critical(f"threw a exception by {event_context.name}, Exception: {exception}, it's a exception handler.")
 
-  def argument_compiler(self, annotations, event_context):
+  async def argument_compiler(self, func, event_context):
     annotations_mapping = self.get_annotations_mapping()
-    translated_mapping = {
-      k: annotations_mapping[v](event_context)\
-      for k, v in annotations.items()\
-        if k != "return" # 以免撞到 return type
+    signature_mapping = self.signature_getter(func)
+    translated_mapping = { # 执行主体
+      k: annotations_mapping[v](
+        event_context
+      )\
+      for k, v in func.__annotations__.items()\
+        if any([
+          k != "return", # 以免撞到 return type
+          k not in signature_mapping # 嗯...你设了什么default? 放你过去.
+        ])
     }
     return translated_mapping
+
+  def signature_getter(self, func):
+    "获取函数的默认值列表"
+    return {k: v.default \
+      for k, v in dict(inspect.signature(func).parameters).items() \
+        if v.default != inspect._empty}
+
+  def signature_checker(self, func):
+    signature_mapping = self.signature_getter(func)
+    for i in signature_mapping.values():
+      if not isinstance(i, Depend):
+        raise TypeError("you must use a Depend to patch the default value.")
+
+  async def signature_checkout(self, func, event_context, queue):
+    signature_mapping = self.signature_getter(func)
+    return {
+      k: await self.main_entrance(
+        v.func,
+        event_context,
+        queue
+      ) for k, v in signature_mapping.items()
+    }
+
+  async def main_entrance(self, run_body, event_context, queue):
+    translated_mapping = {
+      **(await self.argument_compiler(
+        run_body,
+        event_context
+      )),
+      **(await self.signature_checkout(
+        run_body,
+        event_context,
+        queue
+      ))
+    }
+
+    try:
+      return await run_body(**translated_mapping)
+    except (NameError, TypeError) as e:
+      EventLogger.error(f"threw a exception by {event_context.name}, it's about Annotations Checker, please report to developer.")
+      traceback.print_exc()
+    except Exception as e:
+      EventLogger.error(f"threw a exception by {event_context.name}, and it's {e}")
+      await self.throw_exception_event(event_context, queue, e)
       
   async def event_runner(self, exit_signal_status, queue: asyncio.Queue):
     while not exit_signal_status():
@@ -244,22 +296,11 @@ class Session(MiraiProtocol):
                 continue
               if condition_result:
                 EventLogger.info(f"handling a event: {event_context.name}")
-                translated_mapping = self.argument_compiler(
-                  run_body.__annotations__,
-                  event_context
-                )
 
-                try:
-                  asyncio.create_task(run_body(**translated_mapping))
-                except (NameError, TypeError) as e:
-                  EventLogger.error(f"threw a exception by {event_context.name}, it's about Annotations Checker, please report to developer.")
-                  traceback.print_exc()
-                except EventCancelled:
-                  EventLogger.info(f"a event was cancelled: {event_context.name}")
-                  break
-                except Exception as e:
-                  EventLogger.error(f"threw a exception by {event_context.name}, and it's {e}")
-                  await self.throw_exception_event(event_context, queue, e)
+                asyncio.create_task(self.main_entrance(
+                  run_body,
+                  event_context, queue
+                ))
 
   async def close_session(self, ignoreError=False):
     if self.enabled:
@@ -322,9 +363,12 @@ class Session(MiraiProtocol):
       for func_item in func.__annotations__.values():
         for event_name in event_bodys[func]:
           try:
-            if not restraint_mapping[func_item](type("checkMockType", (object,), {
-              "name": event_name
-            })()):
+            if not (restraint_mapping[func_item](
+                type("checkMockType", (object,), {
+                  "name": event_name
+                })
+              )
+            ):
               raise ValueError(f"error in annotations checker: {func}.{func_item}: {event_name}")
           except KeyError:
             raise ValueError(f"error in annotations checker: {func}.{func_item} is invaild.")
@@ -364,6 +408,15 @@ class Session(MiraiProtocol):
 
   def get_annotations_mapping(self):
     from .event.message import MessageChain
+    """
+    async def special_depend(event_context, depend_body: Depend):
+      return await depend_body.func(
+        **await self.argument_compiler(
+          depend_body.func.__annotations__, event_context
+        )
+      )
+    """
+
     return {
       Session: lambda k: self,
       GroupMessage: lambda k: k.body \
@@ -417,6 +470,7 @@ class Session(MiraiProtocol):
     return self.cached_friends.get(target)
 
   def getEventCurrentName(self, event_value):
+    from .event.builtins import UnexpectedException
     if inspect.isclass(event_value) and issubclass(event_value, ExternalEvent): # subclass
       return event_value.__name__
     elif isinstance(event_value, ( # normal class
@@ -441,5 +495,3 @@ class Session(MiraiProtocol):
   @property
   def registeredEventNames(self):
     return [self.getEventCurrentName(i) for i in self.event.keys()]
-
-from .event.builtins import UnexpectedException

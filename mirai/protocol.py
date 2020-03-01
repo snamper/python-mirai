@@ -7,7 +7,8 @@ import json
 
 from mirai.event.message.types import FriendMessage, GroupMessage, BotMessage, MessageTypes
 
-from mirai.event import ExternalEvent, ExternalEvents
+from mirai.event import ExternalEvent
+from mirai.event.external.enums import ExternalEvents
 from mirai.friend import Friend
 from mirai.group import Group, GroupSetting, Member, MemberChangeableSetting
 from mirai.event.message.chain import MessageChain
