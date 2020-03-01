@@ -4,7 +4,7 @@ from uuid import UUID
 from mirai.misc import findKey, printer, ImageRegex, getMatchedString, randomRangedNumberString as rd
 from mirai.face import QQFaces
 from mirai.message.base import BaseMessageComponent, MessageComponentTypes
-from pydantic import Field, validator
+from pydantic import Field, validator, HttpUrl
 from pydantic.generics import GenericModel
 from mirai.network import fetch, session
 from mirai.misc import ImageType
@@ -62,6 +62,7 @@ class Face(BaseMessageComponent):
 class Image(BaseMessageComponent):
     type: MessageComponentTypes = "Image"
     imageId: UUID
+    url: HttpUrl
 
     @validator("imageId", always=True, pre=True)
     @classmethod
@@ -79,10 +80,6 @@ class Image(BaseMessageComponent):
 
     def toString(self):
         return f"[Image::{self.imageId}]"
-
-    @property
-    def url(self):
-        return f"http://gchat.qpic.cn/gchatpic_new/{rd()}/{rd()}-{rd()}-{self.imageId.hex.upper()}/0"
 
     def asGroupImage(self) -> str:
         return f"{{{str(self.imageId).upper()}}}.jpg"
@@ -127,10 +124,3 @@ MessageComponents = {
     "Source": Source,
     "Unknown": Unknown
 }
-
-from ..context import message, event
-from mirai.prototypes.context import (
-    MessageContextBody,
-    EventContextBody
-)
-from mirai.protocol import MiraiProtocol
