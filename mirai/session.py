@@ -4,20 +4,22 @@ from .network import fetch, session
 from .protocol import MiraiProtocol
 from .group import Group, Member
 from .friend import Friend
-from .message.types import FriendMessage, GroupMessage, MessageTypes, MessageItemType
-from .event import InternalEvent, ExternalEvent, ExternalEventTypes, ExternalEvents
+from .event.message.types import FriendMessage, GroupMessage, MessageTypes, MessageItemType
+from .event import InternalEvent, ExternalEvent, ExternalEventTypes
+from .event.external.enums import ExternalEvents
 import asyncio
 from threading import Thread, Lock
 from contextvars import ContextVar
 import random
 import traceback
 from mirai.misc import printer, raiser
-from .message import components
+from .event.message import components
 import inspect
 from functools import partial
 import copy
 from .logger import Event as EventLogger, Session as SessionLogger
 import json
+from .depend import Depend
 
 _T = T.TypeVar("T")
 
@@ -184,54 +186,29 @@ class Session(MiraiProtocol):
   def receiver(self, event_name, 
       addon_condition: T.Optional[
         T.Callable[[T.Union[FriendMessage, GroupMessage]], bool]
-      ] = None):
+      ] = None,
+      dependencies: T.List[Depend] = []):
     def receiver_warpper(
       func: T.Callable[[T.Union[FriendMessage, GroupMessage], "Session"], T.Awaitable[T.Any]]
     ):
+      if not inspect.iscoroutinefunction(func):
+        raise TypeError("event body must be a coroutine function.")
+        
       if event_name not in self.event:
-        self.event[event_name] = [{addon_condition: func}]
+        self.event[event_name] = [{addon_condition: {
+          "func": func,
+          "dependencies": dependencies
+        }}]
       else:
-        self.event[event_name].append({addon_condition: func})
+        self.event[event_name].append({addon_condition: {
+          "func": func,
+          "dependencies": dependencies
+        }})
       return func
     return receiver_warpper
 
-  def setting_context(self, event_context):
-    from .prototypes.context import (
-      MessageContextBody, EventContextBody, # body
-    )
-    from .context import (
-      message as MessageContext,
-      event as EventContext,
-
-      working_type as WorkingContext
-    )
-    MessageContext.set(None)
-    EventContext.set(None)
-    WorkingContext.set(None)
-
-    context_body: T.Union[MessageContextBody, EventContextBody]
-    internal_context_object: \
-      T.Union[MessageContext, EventContext]
-    if hasattr(ExternalEvents, event_context.name):
-      WorkingContext.set("Event")
-      internal_context_object = EventContext
-      context_body = EventContextBody(
-        event=event_context.body,
-        session=self
-      )
-    elif event_context.name in MessageTypes:
-      WorkingContext.set("Message")
-      internal_context_object = MessageContext
-      context_body = MessageContextBody(
-        message=event_context.body,
-        session=self
-      )
-    else:
-      WorkingContext.set("Unknown")
-                    
-    internal_context_object.set(context_body) # 设置完毕.
-
   async def throw_exception_event(self, event_context, queue, exception):
+    from .event.builtins import UnexpectedException
     if event_context.name != "UnexpectedException":
       #print("error: by pre:", event_context.name)
       await queue.put(InternalEvent(
@@ -247,14 +224,71 @@ class Session(MiraiProtocol):
     else:
       EventLogger.critical(f"threw a exception by {event_context.name}, Exception: {exception}, it's a exception handler.")
 
-  def argument_compiler(self, annotations, event_context):
+  async def argument_compiler(self, func, event_context):
     annotations_mapping = self.get_annotations_mapping()
-    translated_mapping = {
-      k: annotations_mapping[v](event_context)\
-      for k, v in annotations.items()\
-        if k != "return" # 以免撞到 return type
+    signature_mapping = self.signature_getter(func)
+    translated_mapping = { # 执行主体
+      k: annotations_mapping[v](
+        event_context
+      )\
+      for k, v in func.__annotations__.items()\
+        if any([
+          k != "return", # 以免撞到 return type
+          k not in signature_mapping # 嗯...你设了什么default? 放你过去.
+        ])
     }
     return translated_mapping
+
+  def signature_getter(self, func):
+    "获取函数的默认值列表"
+    return {k: v.default \
+      for k, v in dict(inspect.signature(func).parameters).items() \
+        if v.default != inspect._empty}
+
+  def signature_checker(self, func):
+    signature_mapping = self.signature_getter(func)
+    for i in signature_mapping.values():
+      if not isinstance(i, Depend):
+        raise TypeError("you must use a Depend to patch the default value.")
+
+  async def signature_checkout(self, func, event_context, queue):
+    signature_mapping = self.signature_getter(func)
+    return {
+      k: await self.main_entrance(
+        v.func,
+        event_context,
+        queue
+      ) for k, v in signature_mapping.items()
+    }
+
+  async def main_entrance(self, run_body, event_context, queue):
+    if isinstance(run_body, dict):
+      callable_target = run_body['func']
+      for depend in run_body['dependencies']:
+        await self.main_entrance(depend.func, event_context, queue)
+    else:
+      callable_target = run_body
+
+    translated_mapping = {
+      **(await self.argument_compiler(
+        callable_target,
+        event_context
+      )),
+      **(await self.signature_checkout(
+        callable_target,
+        event_context,
+        queue
+      ))
+    }
+
+    try:
+      return await callable_target(**translated_mapping)
+    except (NameError, TypeError) as e:
+      EventLogger.error(f"threw a exception by {event_context.name}, it's about Annotations Checker, please report to developer.")
+      traceback.print_exc()
+    except Exception as e:
+      EventLogger.error(f"threw a exception by {event_context.name}, and it's {e}")
+      await self.throw_exception_event(event_context, queue, e)
       
   async def event_runner(self, exit_signal_status, queue: asyncio.Queue):
     while not exit_signal_status():
@@ -279,20 +313,11 @@ class Session(MiraiProtocol):
                 continue
               if condition_result:
                 EventLogger.info(f"handling a event: {event_context.name}")
-                self.setting_context(event_context)
-                translated_mapping = self.argument_compiler(
-                  run_body.__annotations__,
-                  event_context
-                )
 
-                try:
-                  asyncio.create_task(run_body(**translated_mapping))
-                except (NameError, TypeError) as e:
-                  EventLogger.error(f"threw a exception by {event_context.name}, it's about Annotations Checker, please report to developer.")
-                  traceback.print_exc()
-                except Exception as e:
-                  EventLogger.error(f"threw a exception by {event_context.name}, and it's {e}")
-                  await self.throw_exception_event(event_context, queue, e)
+                asyncio.create_task(self.main_entrance(
+                  run_body,
+                  event_context, queue
+                ))
 
   async def close_session(self, ignoreError=False):
     if self.enabled:
@@ -319,7 +344,7 @@ class Session(MiraiProtocol):
       self.async_runtime.join()
 
   def getRestraintMapping(self):
-    from .message import MessageChain
+    from .event.message import MessageChain
     def warpper(name, event_context):
       return name == event_context.name
     return {
@@ -345,26 +370,38 @@ class Session(MiraiProtocol):
     for event_name in self.event:
       event_body_list = sum([list(i.values()) for i in self.event[event_name]], [])
       for i in event_body_list:
-        if not event_bodys.get(i):
-          event_bodys[i] = [event_name]
+        if not event_bodys.get(i['func']):
+          event_bodys[i['func']] = [event_name]
         else:
-          event_bodys[i].append(event_name)
+          event_bodys[i['func']].append(event_name)
     
     restraint_mapping = self.getRestraintMapping()
     for func in event_bodys:
       for func_item in func.__annotations__.values():
         for event_name in event_bodys[func]:
           try:
-            if not restraint_mapping[func_item](type("checkMockType", (object,), {
-              "name": event_name
-            })()):
+            if not (restraint_mapping[func_item](
+                type("checkMockType", (object,), {
+                  "name": event_name
+                })
+              )
+            ):
               raise ValueError(f"error in annotations checker: {func}.{func_item}: {event_name}")
           except KeyError:
             raise ValueError(f"error in annotations checker: {func}.{func_item} is invaild.")
           except ValueError:
             raise
 
+  def checkEventDependencies(self):
+    for event_name, event_bodys in self.event.items():
+      for i in event_bodys:
+        value = list(i.values())[0]
+        for depend in value['dependencies']:
+          if type(depend) != Depend:
+            raise TypeError(f"error in dependencies checker: {value['func']}: {event_name}")
+
   async def joinMainThread(self):
+    self.checkEventDependencies()
     self.checkEventBodyAnnotations()
     SessionLogger.info("session ready.")
     while self.shared_lock:
@@ -396,7 +433,7 @@ class Session(MiraiProtocol):
     return IReturn
 
   def get_annotations_mapping(self):
-    from .message import MessageChain
+    from .event.message import MessageChain
     return {
       Session: lambda k: self,
       GroupMessage: lambda k: k.body \
@@ -450,6 +487,7 @@ class Session(MiraiProtocol):
     return self.cached_friends.get(target)
 
   def getEventCurrentName(self, event_value):
+    from .event.builtins import UnexpectedException
     if inspect.isclass(event_value) and issubclass(event_value, ExternalEvent): # subclass
       return event_value.__name__
     elif isinstance(event_value, ( # normal class
@@ -474,5 +512,3 @@ class Session(MiraiProtocol):
   @property
   def registeredEventNames(self):
     return [self.getEventCurrentName(i) for i in self.event.keys()]
-
-from .event.builtins import UnexpectedException

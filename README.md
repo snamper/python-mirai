@@ -28,5 +28,3 @@ pip install kuriyama
 
 ### 许可证
 我们使用 [`GNU AGPLv3`](https://choosealicense.com/licenses/agpl-3.0/) 作为本项目的开源许可证, 而由于原项目 [`mirai`](https://github.com/mamoe/mirai) 同样使用了 `GNU AGPLv3` 作为开源许可证, 因此你在使用时需要遵守相应的规则.  
-
-依赖注入思路: 检查run_body是否定义注入 => 传入上下文系统并执行注入 => 获取返回值并设置.

@@ -3,8 +3,8 @@ import typing as T
 from uuid import UUID
 from mirai.misc import findKey, printer, ImageRegex, getMatchedString, randomRangedNumberString as rd
 from mirai.face import QQFaces
-from mirai.message.base import BaseMessageComponent, MessageComponentTypes
-from pydantic import Field, validator
+from mirai.event.message.base import BaseMessageComponent, MessageComponentTypes
+from pydantic import Field, validator, HttpUrl
 from pydantic.generics import GenericModel
 from mirai.network import fetch, session
 from mirai.misc import ImageType
@@ -12,7 +12,6 @@ from io import BytesIO
 from PIL import Image as PILImage
 from pathlib import Path
 import re
-from mirai.context import Direct
 
 __all__ = [
     "Plain",
@@ -63,6 +62,7 @@ class Face(BaseMessageComponent):
 class Image(BaseMessageComponent):
     type: MessageComponentTypes = "Image"
     imageId: UUID
+    url: HttpUrl
 
     @validator("imageId", always=True, pre=True)
     @classmethod
@@ -81,10 +81,6 @@ class Image(BaseMessageComponent):
     def toString(self):
         return f"[Image::{self.imageId}]"
 
-    @property
-    def url(self):
-        return f"http://gchat.qpic.cn/gchatpic_new/{rd()}/{rd()}-{rd()}-{self.imageId.hex.upper()}/0"
-
     def asGroupImage(self) -> str:
         return f"{{{str(self.imageId).upper()}}}.jpg"
 
@@ -98,13 +94,10 @@ class Image(BaseMessageComponent):
     @classmethod
     async def fromFileSystem(cls, 
             path: T.Union[Path, str],
+            session,
             imageType: ImageType
         ) -> "Image":
-        if Direct.WorkingType == "Message":
-            miraiSession = Direct.Message.session
-        else:
-            miraiSession = Direct.Event.session
-        return await miraiSession.uploadImage(imageType, path)
+        return await session.uploadImage(imageType, path)
 
 class Unknown(BaseMessageComponent):
     type: MessageComponentTypes = "Unknown"
@@ -131,10 +124,3 @@ MessageComponents = {
     "Source": Source,
     "Unknown": Unknown
 }
-
-from ..context import message, event
-from mirai.prototypes.context import (
-    MessageContextBody,
-    EventContextBody
-)
-from mirai.protocol import MiraiProtocol

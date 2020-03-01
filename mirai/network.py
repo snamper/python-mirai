@@ -16,10 +16,10 @@ class fetch:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=data_map) as response:
                 if response.status != 200:
-                    Network.error(f"requested {url=}, by {data_map=}, and {response.status=}")
+                    Network.error(f"requested url={url}, by data_map={data_map}, and status={response.status}")
                     raise NetworkError(f"method=POST, url={url}, data={data_map}, status={response.status}")
                 data = await response.text(encoding="utf-8")
-                Network.debug(f"requested {url=}, by {data_map=}, and {response.status=}, {data=}")
+                Network.debug(f"requested url={url}, by data_map={data_map}, and status={response.status}, data={data}")
         return json.loads(data)
 
     @staticmethod
@@ -27,7 +27,7 @@ class fetch:
         async with aiohttp.ClientSession() as session:
             async with session.get(url, params=params) as response:
                 data = await response.text(encoding="utf-8")
-                Network.debug(f"requested {url=}, by {params=}, and {response.status=}, {data=}")
+                Network.debug(f"requested url={url}, by params={params}, and status={response.status}, data={data}")
         return json.loads(data)
 
     @staticmethod
@@ -40,5 +40,5 @@ class fetch:
             upload_data.add_fields(item)
         async with aiohttp.ClientSession() as session:
             async with session.post(url, data=upload_data) as response:
-                Network.debug(f"requested {url=}, by {file.name=}, and {response.status=}, {addon_dict=}")
+                Network.debug(f"requested url={url}, by filename={file.name}, and status={response.status}, addon_dict={addon_dict}")
                 return await response.text("utf-8")

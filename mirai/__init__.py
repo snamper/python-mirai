@@ -4,13 +4,10 @@ from mirai.misc import (
 )
 from mirai.face import QQFaces
 from mirai.exceptions import NetworkError
+from mirai.depend import Depend
 
-from mirai.context import (
-    Direct
-)
-
-import mirai.message.base
-from mirai.message.components import (
+import mirai.event.message.base
+from mirai.event.message.components import (
     At,
     Plain,
     Source,
@@ -18,10 +15,10 @@ from mirai.message.components import (
     Face,
     Image
 )
-from mirai.message.chain import (
+from mirai.event.message.chain import (
     MessageChain
 )
-from mirai.message.types import (
+from mirai.event.message.types import (
     GroupMessage,
     FriendMessage,
     BotMessage
@@ -29,8 +26,7 @@ from mirai.message.types import (
 
 from mirai.event import (
     InternalEvent,
-    ExternalEvent,
-    ExternalEvents
+    ExternalEvent
 )
 from mirai.event.builtins import (
     UnexpectedException
@@ -65,6 +61,7 @@ from mirai.event.external import (
     MemberMuteEvent,
     MemberUnmuteEvent
 )
+from mirai.event.external.enums import ExternalEvents
 
 from mirai.friend import (
     Friend
@@ -81,11 +78,4 @@ import mirai.network
 import mirai.protocol
 from mirai.session import (
     Session
-)
-
-
-
-from mirai.prototypes.context import (
-    MessageContextBody,
-    EventContextBody
 )
