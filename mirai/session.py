@@ -401,6 +401,7 @@ class Session(MiraiProtocol):
             raise TypeError(f"error in dependencies checker: {value['func']}: {event_name}")
 
   async def joinMainThread(self):
+    self.checkEventDependencies()
     self.checkEventBodyAnnotations()
     SessionLogger.info("session ready.")
     while self.shared_lock:
