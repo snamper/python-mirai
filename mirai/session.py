@@ -288,10 +288,10 @@ class Session(MiraiProtocol):
     try:
       if isinstance(run_body, dict):
         middlewares = run_body.get("middlewares")
-
-        async_middlewares = []
-        normal_middlewares = []
         if middlewares:
+          async_middlewares = []
+          normal_middlewares = []
+
           for middleware in middlewares:
             if all([
               hasattr(middleware, "__aenter__"),
