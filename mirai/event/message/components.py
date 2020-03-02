@@ -12,6 +12,7 @@ from io import BytesIO
 from PIL import Image as PILImage
 from pathlib import Path
 from mirai.image import InternalImage
+import datetime
 import re
 
 __all__ = [
@@ -36,6 +37,7 @@ class Plain(BaseMessageComponent):
 class Source(BaseMessageComponent):
     type: MessageComponentTypes = "Source"
     id: int
+    time: datetime.datetime
 
     def toString(self):
         return ""

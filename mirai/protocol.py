@@ -162,6 +162,19 @@ class MiraiProtocol:
         return result
 
     @protocol_log
+    async def messageFromId(self, sourceId: T.Union[components.Source, int]):
+        result = assertOperatorSuccess(await fetch.http_get(f"{self.baseurl}/messageFromId", {
+            "sessionKey": self.session_key,
+            "id": sourceId.id if isinstance(sourceId, components.Source) else sourceId
+        }), raise_exception=True, return_as_is=True)
+        if result['type'] in MessageTypes:
+            if "messageChain" in result:
+                result['messageChain'] = MessageChain.custom_parse(result['messageChain'])
+            return MessageTypes[result['type']].parse_obj(result)
+        else:
+            raise TypeError(f"unknown message, not found type.")
+
+    @protocol_log
     async def muteAll(self, group: T.Union[Group, int]) -> bool:
         return assertOperatorSuccess(
             await fetch.http_post(f"{self.baseurl}/muteAll", {
