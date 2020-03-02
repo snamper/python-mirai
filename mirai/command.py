@@ -1,7 +1,8 @@
 from .session import Session
 from . import (
     MessageChain,
-    Plain
+    Plain,
+    GroupMessage, FriendMessage
 )
 
 class Command:
@@ -16,15 +17,20 @@ class CommandManager:
 
     def __init__(self, 
             session: Session,
-            listenEvents=("GroupMessage", "FriendMessage")):
+            listenEvents=(GroupMessage, FriendMessage)
+        ):
         self.session = Session
-        
+        for event in listenEvents:
+            session.receiver(event)(self.event_listener)
     
     def newCommand(self, prefix="/", addon_parser={}):
         pass
 
-    def event_listener(self, context):
-        """用于监听事件, 并做出分析, 解析到相应的 Command 上.
-        """
-        context.message.messageChain: MessageChain
-        context.message.messageChain.getFirstComponent(Plain)
+    def event_listener(self,
+        session: Session,
+        message: MessageChain,
+        sender: "Sender",
+        type: "Type"
+    ):
+        """用于监听事件, 并做出分析, 解析到相应的 Command 上."""
+        message.toString()

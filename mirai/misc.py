@@ -3,6 +3,7 @@ import asyncio
 from threading import Thread, Lock
 import typing as T
 import random
+from .logger import Protocol
 
 def assertOperatorSuccess(result, raise_exception=False, return_as_is=False):
     if "code" in result:
@@ -50,7 +51,10 @@ def getMatchedString(regex_result):
         return regex_result.string[slice(*regex_result.span())]
 
 def findKey(mapping, value):
-    index = list(mapping.values()).index(value)
+    try:
+        index = list(mapping.values()).index(value)
+    except ValueError:
+        return "Unknown"
     return list(mapping.keys())[index]
 
 def raiser(error):
@@ -70,3 +74,14 @@ def randomNumberString():
 def randomRangedNumberString(length_range=(9,)):
     length = random.choice(length_range)
     return random.choice(range(10**(length - 1), int("9"*(length))))
+
+def protocol_log(func):
+    async def warpper(*args, **kwargs):
+        try:
+            result = await func(*args, **kwargs)
+            Protocol.info(f"protocol method {func.__name__} was called")
+            return result
+        except Exception as e:
+            Protocol.error(f"protocol method {func.__name__} raised a error: {e.__class__.__name__}")
+            raise e
+    return warpper

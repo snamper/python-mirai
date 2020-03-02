@@ -40,6 +40,9 @@ class MessageChain(BaseModel):
         else:
             return False
 
+    def __len__(self) -> int:
+        return len(self.__root__)
+
     def getFirstComponent(self, component_class) -> T.Optional[BaseMessageComponent]:
         for i in self:
             if type(i) == component_class:
