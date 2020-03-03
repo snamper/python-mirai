@@ -270,12 +270,11 @@ class Session(MiraiProtocol):
       callable_target = run_body['func']
       for depend in run_body['dependencies']:
         await self.main_entrance(
-          {"func": depend.func, "middlewares": depend.middlewares},
+          {"func": depend.func.__call__, "middlewares": depend.middlewares},
           event_context, queue
         )
-
     else:
-      callable_target = run_body
+      callable_target = run_body.__call__
 
     translated_mapping = {
       **(await self.argument_compiler(
