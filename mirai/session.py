@@ -318,9 +318,15 @@ class Session(MiraiProtocol):
               for normal_middleware in normal_middlewares:
                 SessionLogger.debug(f"a event called {event_context.name}, enter a currect context.")
                 normal_stack.enter_context(normal_middleware)
-              return await callable_target(**translated_mapping)
+              if inspect.iscoroutinefunction(callable_target):
+                return await callable_target(**translated_mapping)
+              else:
+                return callable_target(**translated_mapping)
 
-      return await callable_target(**translated_mapping)
+      if inspect.iscoroutinefunction(callable_target):
+        return await callable_target(**translated_mapping)
+      else:
+        return callable_target(**translated_mapping)
     except (NameError, TypeError) as e:
       EventLogger.error(f"threw a exception by {event_context.name}, it's about Annotations Checker, please report to developer.")
       traceback.print_exc()
