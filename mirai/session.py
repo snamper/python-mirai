@@ -269,8 +269,11 @@ class Session(MiraiProtocol):
     if isinstance(run_body, dict):
       callable_target = run_body['func']
       for depend in run_body['dependencies']:
-        await self.main_entrance(depend.func, event_context, queue)
-      
+        await self.main_entrance(
+          {"func": depend.func, "middlewares": depend.middlewares},
+          event_context, queue
+        )
+
     else:
       callable_target = run_body
 
