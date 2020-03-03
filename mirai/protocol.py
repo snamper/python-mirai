@@ -162,10 +162,14 @@ class MiraiProtocol:
         return result
 
     @protocol_log
-    async def messageFromId(self, sourceId: T.Union[components.Source, int]):
+    async def messageFromId(self, sourceId: T.Union[components.Source, components.Quote, int]):
         result = assertOperatorSuccess(await fetch.http_get(f"{self.baseurl}/messageFromId", {
             "sessionKey": self.session_key,
-            "id": sourceId.id if isinstance(sourceId, components.Source) else sourceId
+            "id": sourceId.id if \
+                isinstance(sourceId,
+                    (components.Source, components.Quote)
+                ) else \
+                    sourceId
         }), raise_exception=True, return_as_is=True)
         if result['type'] in MessageTypes:
             if "messageChain" in result:
