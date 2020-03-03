@@ -11,6 +11,8 @@ from mirai.misc import ImageType
 from io import BytesIO
 from PIL import Image as PILImage
 from pathlib import Path
+from mirai.image import InternalImage
+import datetime
 import re
 
 __all__ = [
@@ -20,7 +22,8 @@ __all__ = [
     "AtAll",
     "Face",
     "Image",
-    "Unknown"
+    "Unknown",
+    "Quote"
 ]
 
 TempType = T.TypeVar("TempType")
@@ -35,6 +38,14 @@ class Plain(BaseMessageComponent):
 class Source(BaseMessageComponent):
     type: MessageComponentTypes = "Source"
     id: int
+    time: datetime.datetime
+
+    def toString(self):
+        return ""
+
+class Quote(BaseMessageComponent):
+    type: MessageComponentTypes = "Quote"
+    id: int
 
     def toString(self):
         return ""
@@ -42,6 +53,7 @@ class Source(BaseMessageComponent):
 class At(GenericModel, BaseMessageComponent):
     type: MessageComponentTypes = "At"
     target: int
+    display: str
 
     def toString(self):
         return f"[At::target={self.target}]"
@@ -62,7 +74,7 @@ class Face(BaseMessageComponent):
 class Image(BaseMessageComponent):
     type: MessageComponentTypes = "Image"
     imageId: UUID
-    url: HttpUrl
+    url: T.Optional[HttpUrl] = None
 
     @validator("imageId", always=True, pre=True)
     @classmethod
@@ -91,13 +103,9 @@ class Image(BaseMessageComponent):
         async with session.get(self.url) as response:
             return PILImage.open(BytesIO(await response.read()))
 
-    @classmethod
-    async def fromFileSystem(cls, 
-            path: T.Union[Path, str],
-            session,
-            imageType: ImageType
-        ) -> "Image":
-        return await session.uploadImage(imageType, path)
+    @staticmethod
+    def fromFileSystem(path: T.Union[Path, str]) -> InternalImage:
+        return InternalImage(path)
 
 class Unknown(BaseMessageComponent):
     type: MessageComponentTypes = "Unknown"
@@ -113,6 +121,7 @@ class ComponentTypes(Enum):
     AtAll = AtAll
     Face = Face
     Image = Image
+    Quote = Quote
     Unknown = Unknown
 
 MessageComponents = {
@@ -122,5 +131,6 @@ MessageComponents = {
     "Plain": Plain,
     "Image": Image,
     "Source": Source,
+    "Quote": Quote,
     "Unknown": Unknown
 }

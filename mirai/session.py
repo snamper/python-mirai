@@ -1,27 +1,30 @@
-import typing as T
-from urllib import parse
-from .network import fetch, session
-from .protocol import MiraiProtocol
-from .group import Group, Member
-from .friend import Friend
-from .event.message.types import FriendMessage, GroupMessage, MessageTypes, MessageItemType
-from .event import InternalEvent, ExternalEvent, ExternalEventTypes
-from .event.external.enums import ExternalEvents
 import asyncio
-from threading import Thread, Lock
-from contextvars import ContextVar
+import contextlib
+import copy
+import inspect
+import json
 import random
 import traceback
-from mirai.misc import printer, raiser
-from .event.message import components
-import inspect
+import typing as T
+from contextvars import ContextVar
 from functools import partial
-import copy
-from .logger import Event as EventLogger, Session as SessionLogger
-import json
-from .depend import Depend
+from threading import Lock, Thread
+from urllib import parse
 
-_T = T.TypeVar("T")
+from mirai.misc import printer, raiser
+
+from .depend import Depend
+from .event import ExternalEvent, ExternalEventTypes, InternalEvent
+from .event.external.enums import ExternalEvents
+from .event.message import components
+from .event.message.types import (
+    FriendMessage, GroupMessage, MessageItemType, MessageTypes)
+from .friend import Friend
+from .group import Group, Member
+from .logger import Event as EventLogger
+from .logger import Session as SessionLogger
+from .network import fetch, session
+from .protocol import MiraiProtocol
 
 class Session(MiraiProtocol):
   cache_options: T.Dict[str, bool] = {}
@@ -187,23 +190,25 @@ class Session(MiraiProtocol):
       addon_condition: T.Optional[
         T.Callable[[T.Union[FriendMessage, GroupMessage]], bool]
       ] = None,
-      dependencies: T.List[Depend] = []):
+      dependencies: T.List[Depend] = [],
+      use_middlewares: T.List[T.Callable] = []
+    ):
     def receiver_warpper(
       func: T.Callable[[T.Union[FriendMessage, GroupMessage], "Session"], T.Awaitable[T.Any]]
     ):
       if not inspect.iscoroutinefunction(func):
         raise TypeError("event body must be a coroutine function.")
-        
+
+      protocol = {addon_condition: {
+        "func": func,
+        "dependencies": dependencies,
+        "middlewares": use_middlewares
+      }}  
+      
       if event_name not in self.event:
-        self.event[event_name] = [{addon_condition: {
-          "func": func,
-          "dependencies": dependencies
-        }}]
+        self.event[event_name] = [protocol]
       else:
-        self.event[event_name].append({addon_condition: {
-          "func": func,
-          "dependencies": dependencies
-        }})
+        self.event[event_name].append(protocol)
       return func
     return receiver_warpper
 
@@ -232,10 +237,9 @@ class Session(MiraiProtocol):
         event_context
       )\
       for k, v in func.__annotations__.items()\
-        if any([
-          k != "return", # 以免撞到 return type
+        if \
+          k != "return" and \
           k not in signature_mapping # 嗯...你设了什么default? 放你过去.
-        ])
     }
     return translated_mapping
 
@@ -265,9 +269,12 @@ class Session(MiraiProtocol):
     if isinstance(run_body, dict):
       callable_target = run_body['func']
       for depend in run_body['dependencies']:
-        await self.main_entrance(depend.func, event_context, queue)
+        await self.main_entrance(
+          {"func": depend.func.__call__, "middlewares": depend.middlewares},
+          event_context, queue
+        )
     else:
-      callable_target = run_body
+      callable_target = run_body.__call__
 
     translated_mapping = {
       **(await self.argument_compiler(
@@ -282,7 +289,44 @@ class Session(MiraiProtocol):
     }
 
     try:
-      return await callable_target(**translated_mapping)
+      if isinstance(run_body, dict):
+        middlewares = run_body.get("middlewares")
+        if middlewares:
+          async_middlewares = []
+          normal_middlewares = []
+
+          for middleware in middlewares:
+            if all([
+              hasattr(middleware, "__aenter__"),
+              hasattr(middleware, "__aexit__")
+            ]):
+              async_middlewares.append(middleware)
+            elif all([
+              hasattr(middleware, "__enter__"),
+              hasattr(middleware, "__exit__")
+            ]):
+              normal_middlewares.append(middleware)
+            else:
+              SessionLogger.error(f"threw a exception by {event_context.name}, no currect context error.")
+              raise AttributeError("no a currect context object.")
+
+          async with contextlib.AsyncExitStack() as async_stack:
+            for async_middleware in async_middlewares:
+              SessionLogger.debug(f"a event called {event_context.name}, enter a currect async context.")
+              await async_stack.enter_async_context(async_middleware)
+            with contextlib.ExitStack() as normal_stack:
+              for normal_middleware in normal_middlewares:
+                SessionLogger.debug(f"a event called {event_context.name}, enter a currect context.")
+                normal_stack.enter_context(normal_middleware)
+              if inspect.iscoroutinefunction(callable_target):
+                return await callable_target(**translated_mapping)
+              else:
+                return callable_target(**translated_mapping)
+
+      if inspect.iscoroutinefunction(callable_target):
+        return await callable_target(**translated_mapping)
+      else:
+        return callable_target(**translated_mapping)
     except (NameError, TypeError) as e:
       EventLogger.error(f"threw a exception by {event_context.name}, it's about Annotations Checker, please report to developer.")
       traceback.print_exc()
@@ -376,21 +420,24 @@ class Session(MiraiProtocol):
           event_bodys[i['func']].append(event_name)
     
     restraint_mapping = self.getRestraintMapping()
+    
     for func in event_bodys:
-      for func_item in func.__annotations__.values():
-        for event_name in event_bodys[func]:
-          try:
-            if not (restraint_mapping[func_item](
-                type("checkMockType", (object,), {
-                  "name": event_name
-                })
-              )
-            ):
-              raise ValueError(f"error in annotations checker: {func}.{func_item}: {event_name}")
-          except KeyError:
-            raise ValueError(f"error in annotations checker: {func}.{func_item} is invaild.")
-          except ValueError:
-            raise
+      whileList = self.signature_getter(func)
+      for param_name, func_item in func.__annotations__.items():
+        if param_name not in whileList:
+          for event_name in event_bodys[func]:
+            try:
+              if not (restraint_mapping[func_item](
+                  type("checkMockType", (object,), {
+                    "name": event_name
+                  })
+                )
+              ):
+                raise ValueError(f"error in annotations checker: {func}.{func_item}: {event_name}")
+            except KeyError:
+              raise ValueError(f"error in annotations checker: {func}.{func_item} is invaild.")
+            except ValueError:
+              raise
 
   def checkEventDependencies(self):
     for event_name, event_bodys in self.event.items():
