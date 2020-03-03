@@ -235,10 +235,9 @@ class Session(MiraiProtocol):
         event_context
       )\
       for k, v in func.__annotations__.items()\
-        if any([
-          k != "return", # 以免撞到 return type
+        if \
+          k != "return" and \
           k not in signature_mapping # 嗯...你设了什么default? 放你过去.
-        ])
     }
     return translated_mapping
 
@@ -411,21 +410,24 @@ class Session(MiraiProtocol):
           event_bodys[i['func']].append(event_name)
     
     restraint_mapping = self.getRestraintMapping()
+    
     for func in event_bodys:
-      for func_item in func.__annotations__.values():
-        for event_name in event_bodys[func]:
-          try:
-            if not (restraint_mapping[func_item](
-                type("checkMockType", (object,), {
-                  "name": event_name
-                })
-              )
-            ):
-              raise ValueError(f"error in annotations checker: {func}.{func_item}: {event_name}")
-          except KeyError:
-            raise ValueError(f"error in annotations checker: {func}.{func_item} is invaild.")
-          except ValueError:
-            raise
+      whileList = self.signature_getter(func)
+      for param_name, func_item in func.__annotations__.items():
+        if param_name not in whileList:
+          for event_name in event_bodys[func]:
+            try:
+              if not (restraint_mapping[func_item](
+                  type("checkMockType", (object,), {
+                    "name": event_name
+                  })
+                )
+              ):
+                raise ValueError(f"error in annotations checker: {func}.{func_item}: {event_name}")
+            except KeyError:
+              raise ValueError(f"error in annotations checker: {func}.{func_item} is invaild.")
+            except ValueError:
+              raise
 
   def checkEventDependencies(self):
     for event_name, event_bodys in self.event.items():
