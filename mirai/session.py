@@ -270,11 +270,18 @@ class Session(MiraiProtocol):
       callable_target = run_body['func']
       for depend in run_body['dependencies']:
         await self.main_entrance(
-          {"func": depend.func.__call__, "middlewares": depend.middlewares},
+          {
+            "func": depend.func if not inspect.isclass(depend.func) else\
+              depend.func.__call__ if hasattr(depend.func, "__call__") else\
+                raiser(TypeError("must be callable.")), 
+              "middlewares": depend.middlewares
+          },
           event_context, queue
         )
     else:
-      callable_target = run_body.__call__
+      callable_target = run_body if not inspect.isclass(run_body) else\
+        run_body.__call__ if hasattr(run_body, "__call__") else\
+          raiser(TypeError("must be callable."))
 
     translated_mapping = {
       **(await self.argument_compiler(
