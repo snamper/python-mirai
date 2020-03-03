@@ -13,6 +13,7 @@ class MessageComponentTypes(Enum):
     At = "At"
     AtAll = "AtAll"
     Image = "Image"
+    Quote = "Quote"
     Unknown = "Unknown"
 
 class BaseMessageComponent(BaseModel):

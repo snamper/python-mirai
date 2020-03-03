@@ -1,28 +1,30 @@
-import typing as T
-from urllib import parse
-from .network import fetch, session
-from .protocol import MiraiProtocol
-from .group import Group, Member
-from .friend import Friend
-from .event.message.types import FriendMessage, GroupMessage, MessageTypes, MessageItemType
-from .event import InternalEvent, ExternalEvent, ExternalEventTypes
-from .event.external.enums import ExternalEvents
 import asyncio
-from threading import Thread, Lock
-from contextvars import ContextVar
+import contextlib
+import copy
+import inspect
+import json
 import random
 import traceback
-from mirai.misc import printer, raiser
-from .event.message import components
-import inspect
+import typing as T
+from contextvars import ContextVar
 from functools import partial
-import copy
-from .logger import Event as EventLogger, Session as SessionLogger
-import json
-from .depend import Depend
-import contextlib
+from threading import Lock, Thread
+from urllib import parse
 
-_T = T.TypeVar("T")
+from mirai.misc import printer, raiser
+
+from .depend import Depend
+from .event import ExternalEvent, ExternalEventTypes, InternalEvent
+from .event.external.enums import ExternalEvents
+from .event.message import components
+from .event.message.types import (
+    FriendMessage, GroupMessage, MessageItemType, MessageTypes)
+from .friend import Friend
+from .group import Group, Member
+from .logger import Event as EventLogger
+from .logger import Session as SessionLogger
+from .network import fetch, session
+from .protocol import MiraiProtocol
 
 class Session(MiraiProtocol):
   cache_options: T.Dict[str, bool] = {}

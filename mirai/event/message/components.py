@@ -22,7 +22,8 @@ __all__ = [
     "AtAll",
     "Face",
     "Image",
-    "Unknown"
+    "Unknown",
+    "Quote"
 ]
 
 TempType = T.TypeVar("TempType")
@@ -38,6 +39,13 @@ class Source(BaseMessageComponent):
     type: MessageComponentTypes = "Source"
     id: int
     time: datetime.datetime
+
+    def toString(self):
+        return ""
+
+class Quote(BaseMessageComponent):
+    type: MessageComponentTypes = "Quote"
+    id: int
 
     def toString(self):
         return ""
@@ -113,6 +121,7 @@ class ComponentTypes(Enum):
     AtAll = AtAll
     Face = Face
     Image = Image
+    Quote = Quote
     Unknown = Unknown
 
 MessageComponents = {
@@ -122,5 +131,6 @@ MessageComponents = {
     "Plain": Plain,
     "Image": Image,
     "Source": Source,
+    "Quote": Quote,
     "Unknown": Unknown
 }
